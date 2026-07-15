@@ -3,12 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GPUSniff — Sniff Out the Best GPU Deals</title>
-  <meta name="description" content="GPUSniff tracks GPU and gaming hardware prices across Best Buy, Newegg, Amazon, Walmart, eBay, B&H Photo, and Micro Center. Get price alerts and never overpay for a graphics card again.">
-  <meta property="og:title" content="GPUSniff — Sniff Out the Best GPU Deals">
-  <meta property="og:description" content="Real-time GPU price comparison across 7 major retailers. Browser extension with price alerts.">
+  <title>GPUSniff — Compare Real GPU Prices Across 8 Retailers</title>
+  <meta name="description" content="GPUSniff compares real GPU prices across Best Buy, Newegg, Amazon, B&H Photo, Walmart, eBay, Micro Center, and Tech For Less. Free Chrome extension with price drop alerts — real, in-stock prices only.">
+  <meta property="og:title" content="GPUSniff — Compare Real GPU Prices Across 8 Retailers">
+  <meta property="og:description" content="Real GPU price comparison across 8 major retailers. Free Chrome extension with price drop alerts.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://gpusniff.com">
+  <meta property="og:image" content="https://gpusniff.com/sniff.png">
+  <link rel="icon" href="/sniff.png">
   <link rel="canonical" href="https://gpusniff.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -53,7 +55,7 @@
       top: 0;
       width: 100%;
       z-index: 100;
-      padding: 16px 0;
+      padding: 14px 0;
       background: rgba(11, 14, 19, 0.85);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border-light);
@@ -75,7 +77,12 @@
       text-decoration: none;
     }
 
-    .logo-icon { font-size: 24px; }
+    .nav-logo-img {
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      display: block;
+    }
 
     .logo-text {
       font-size: 20px;
@@ -104,7 +111,7 @@
 
     /* Hero */
     .hero {
-      padding: 160px 24px 100px;
+      padding: 150px 24px 100px;
       text-align: center;
       position: relative;
       overflow: hidden;
@@ -113,7 +120,7 @@
     .hero::before {
       content: '';
       position: absolute;
-      top: 80px;
+      top: 60px;
       left: 50%;
       transform: translateX(-50%);
       width: 600px;
@@ -121,6 +128,17 @@
       background: radial-gradient(circle, var(--green-glow) 0%, transparent 70%);
       opacity: 0.3;
       pointer-events: none;
+    }
+
+    .hero-logo {
+      width: 200px;
+      max-width: 55vw;
+      height: auto;
+      display: block;
+      margin: 0 auto 28px;
+      position: relative;
+      border-radius: 28px;
+      filter: drop-shadow(0 12px 40px rgba(63, 185, 80, 0.28));
     }
 
     .hero-badge {
@@ -134,7 +152,7 @@
       font-size: 13px;
       font-weight: 500;
       color: var(--green);
-      margin-bottom: 28px;
+      margin-bottom: 24px;
     }
 
     .hero-badge .dot {
@@ -169,7 +187,7 @@
     .hero-sub {
       font-size: 18px;
       color: var(--text-2);
-      max-width: 560px;
+      max-width: 620px;
       margin: 0 auto 40px;
       line-height: 1.7;
     }
@@ -185,7 +203,7 @@
     .btn-primary {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 9px;
       padding: 14px 28px;
       background: var(--green);
       color: var(--bg-0);
@@ -200,6 +218,8 @@
     }
 
     .btn-primary:hover { background: #4cc764; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(63,185,80,0.2); }
+
+    .btn-primary svg { width: 18px; height: 18px; }
 
     .btn-secondary {
       display: inline-flex;
@@ -222,18 +242,20 @@
 
     /* Live ticker */
     .ticker-wrap {
-      max-width: 700px;
+      max-width: 760px;
       margin: 0 auto;
       overflow: hidden;
       border-radius: 10px;
       background: var(--bg-2);
       border: 1px solid var(--border);
       position: relative;
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+      mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
     }
 
     .ticker {
       display: flex;
-      animation: scroll 25s linear infinite;
+      animation: scroll 28s linear infinite;
       width: max-content;
     }
 
@@ -312,7 +334,7 @@
     /* Features */
     .features-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 16px;
     }
 
@@ -464,7 +486,7 @@
     .gpu-tag.amd { border-left: 3px solid var(--red); }
     .gpu-tag.intel { border-left: 3px solid var(--blue); }
 
-    /* CTA / Waitlist */
+    /* Closing CTA */
     .cta-section {
       text-align: center;
       padding: 80px 24px;
@@ -490,62 +512,17 @@
       pointer-events: none;
     }
 
-    .cta-section h2 {
-      position: relative;
-    }
+    .cta-section h2 { position: relative; }
 
     .cta-section .section-desc {
       margin: 0 auto 32px;
-    }
-
-    .waitlist-form {
-      display: flex;
-      gap: 10px;
-      max-width: 440px;
-      margin: 0 auto;
       position: relative;
     }
 
-    .waitlist-form input {
-      flex: 1;
-      height: 48px;
-      padding: 0 16px;
-      background: var(--bg-2);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text-1);
-      font-size: 15px;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.15s;
-    }
+    .cta-section .hero-actions { margin-bottom: 0; position: relative; }
 
-    .waitlist-form input::placeholder { color: var(--text-3); }
-
-    .waitlist-form input:focus {
-      border-color: var(--green);
-      box-shadow: 0 0 0 3px var(--green-dim);
-    }
-
-    .waitlist-form button {
-      height: 48px;
-      padding: 0 24px;
-      background: var(--green);
-      color: var(--bg-0);
-      border: none;
-      border-radius: 10px;
-      font-size: 15px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.15s;
-    }
-
-    .waitlist-form button:hover { background: #4cc764; }
-
-    .waitlist-note {
-      margin-top: 12px;
+    .cta-note {
+      margin-top: 18px;
       font-size: 13px;
       color: var(--text-3);
       position: relative;
@@ -578,9 +555,16 @@
     .footer-left {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       font-size: 14px;
       color: var(--text-3);
+    }
+
+    .footer-logo-img {
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      display: block;
     }
 
     .footer-links {
@@ -599,12 +583,11 @@
 
     /* Responsive */
     @media (max-width: 640px) {
-      .hero { padding: 130px 20px 60px; }
+      .hero { padding: 120px 20px 60px; }
       .hero-actions { flex-direction: column; align-items: center; }
+      .hero-actions .btn-primary, .hero-actions .btn-secondary { width: 100%; max-width: 320px; justify-content: center; }
       .features-grid { grid-template-columns: 1fr; }
       .steps { grid-template-columns: 1fr; }
-      .waitlist-form { flex-direction: column; }
-      .waitlist-form button { width: 100%; }
       footer { flex-direction: column; text-align: center; }
     }
   </style>
@@ -614,30 +597,31 @@
   <nav>
     <div class="nav-inner">
       <a href="/" class="logo">
-        <span class="logo-icon">🐕‍🦺</span>
+        <img src="sniff.png" alt="GPUSniff logo" class="nav-logo-img">
         <span class="logo-text">GPU<span>Sniff</span></span>
       </a>
-      <a href="#waitlist" class="nav-cta">Get early access</a>
+      <a href="#" class="nav-cta">Add to Chrome</a>
     </div>
   </nav>
 
   <header class="hero">
+    <img src="sniff.png" alt="GPUSniff — GPU price comparison" class="hero-logo">
     <div class="hero-badge">
       <span class="dot"></span>
-      Tracking prices across 7 retailers
+      Live · Real prices from 8 retailers
     </div>
     <h1>Never overpay for a<br><span class="highlight">graphics card</span> again</h1>
     <p class="hero-sub">
-      GPUSniff compares GPU and gaming hardware prices across Best Buy, 
-      Newegg, Amazon, Walmart, and more. Set price alerts and we'll 
-      notify you the moment a deal drops.
+      Compare real GPU prices across Best Buy, Newegg, Amazon, B&H Photo,
+      Walmart, eBay, Micro Center, and Tech For Less.
     </p>
     <div class="hero-actions">
-      <a href="#waitlist" class="btn-primary">
-        🔔 Join the waitlist
+      <a href="#" class="btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        Add to Chrome — Free
       </a>
-      <a href="#how" class="btn-secondary">
-        See how it works
+      <a href="#features" class="btn-secondary">
+        Learn more
       </a>
     </div>
     <div class="ticker-wrap">
@@ -661,9 +645,15 @@
           <span class="ticker-drop">-$50</span>
         </div>
         <div class="ticker-item">
+          <span class="ticker-gpu">RTX 5080</span>
+          <span class="ticker-price">$969</span>
+          <span class="ticker-retailer">Tech For Less</span>
+          <span class="ticker-drop">-$30</span>
+        </div>
+        <div class="ticker-item">
           <span class="ticker-gpu">Arc B580</span>
           <span class="ticker-price">$219</span>
-          <span class="ticker-retailer">Newegg</span>
+          <span class="ticker-retailer">Micro Center</span>
           <span class="ticker-drop">-$30</span>
         </div>
         <div class="ticker-item">
@@ -698,9 +688,15 @@
           <span class="ticker-drop">-$50</span>
         </div>
         <div class="ticker-item">
+          <span class="ticker-gpu">RTX 5080</span>
+          <span class="ticker-price">$969</span>
+          <span class="ticker-retailer">Tech For Less</span>
+          <span class="ticker-drop">-$30</span>
+        </div>
+        <div class="ticker-item">
           <span class="ticker-gpu">Arc B580</span>
           <span class="ticker-price">$219</span>
-          <span class="ticker-retailer">Newegg</span>
+          <span class="ticker-retailer">Micro Center</span>
           <span class="ticker-drop">-$30</span>
         </div>
         <div class="ticker-item">
@@ -720,42 +716,55 @@
   </header>
 
   <!-- Features -->
-  <section>
+  <section id="features">
     <div class="section-label">Features</div>
-    <h2>Built for deal hunters</h2>
+    <h2>Everything you need to buy smart</h2>
     <p class="section-desc">
-      GPUSniff runs quietly in your browser, watching prices so you don't have to.
+      GPUSniff runs quietly in your browser, comparing real prices so you never overpay.
     </p>
     <div class="features-grid">
       <div class="feature-card">
-        <div class="feature-icon fi-green">🔍</div>
-        <h3>Real-time price comparison</h3>
-        <p>Instantly compare GPU prices across seven major retailers. See who has the best price, what's in stock, and where you can save — all in one view.</p>
+        <div class="feature-icon fi-green">✅</div>
+        <h3>Real prices only</h3>
+        <p>Every price is a real, in-stock offer pulled live from the retailer. No estimates, no stale numbers, no fabricated deals — if you see a price, it's real and clickable.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon fi-orange">🔔</div>
         <h3>Price drop alerts</h3>
-        <p>Set a target price for any GPU. When it drops below your threshold at any retailer, you get a browser notification with a direct link to the deal.</p>
+        <p>Set a target price for any GPU. When it drops below your threshold at any retailer, GPUSniff sends a browser notification with a direct link to the deal.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon fi-blue">🛒</div>
-        <h3>On-page detection</h3>
-        <p>Browsing a GPU on Best Buy or Newegg? GPUSniff automatically detects the product and shows you if it's cheaper somewhere else. No extra steps.</p>
+        <h3>8 retailers compared instantly</h3>
+        <p>Best Buy, Newegg, Amazon, B&H Photo, Walmart, eBay, Micro Center, and Tech For Less — every offer ranked lowest to highest in a single view.</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon fi-green">📦</div>
-        <h3>New &amp; refurbished</h3>
-        <p>Don't just compare new prices. GPUSniff checks open-box, refurbished, and used inventory on eBay and Amazon Renewed too.</p>
+        <div class="feature-icon fi-green">⚡</div>
+        <h3>Free and lightweight</h3>
+        <p>No account, no bloat, no cost. GPUSniff checks prices when you need them and stays completely out of your way otherwise.</p>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon fi-orange">📊</div>
-        <h3>Price history</h3>
-        <p>See how a GPU's price has moved over time. Know whether you're buying at a peak or catching a genuine deal.</p>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section id="how">
+    <div class="section-label">How it works</div>
+    <h2>Three steps to your best price</h2>
+    <p class="section-desc">
+      Add the extension. Search a GPU. Buy at the lowest real price.
+    </p>
+    <div class="steps">
+      <div class="step">
+        <h3>Install the extension</h3>
+        <p>Add GPUSniff to Chrome. It's free, lightweight, and takes about 10 seconds — no account required.</p>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon fi-blue">⚡</div>
-        <h3>Fast and lightweight</h3>
-        <p>No bloat, no lag. GPUSniff is a focused tool — it checks prices when you need them and stays out of your way otherwise.</p>
+      <div class="step">
+        <h3>Search any GPU</h3>
+        <p>Type a model like "RTX 5070" or browse a product page on any supported store. GPUSniff finds it instantly.</p>
+      </div>
+      <div class="step">
+        <h3>See real prices, ranked</h3>
+        <p>Get real, in-stock prices from every retailer — ranked lowest to highest — so the best deal is always right at the top.</p>
       </div>
     </div>
   </section>
@@ -763,9 +772,9 @@
   <!-- Retailers -->
   <section class="retailers-section">
     <div class="section-label">Coverage</div>
-    <h2>Seven retailers. One comparison.</h2>
+    <h2>Eight retailers. One comparison.</h2>
     <p class="section-desc" style="margin: 0 auto 0;">
-      We track prices across the retailers that matter for gaming hardware.
+      We track real prices across the stores that matter for gaming hardware.
     </p>
     <div class="retailers-grid">
       <div class="retailer-chip"><span class="r-icon">🏪</span> Best Buy</div>
@@ -775,29 +784,7 @@
       <div class="retailer-chip"><span class="r-icon">🔧</span> Micro Center</div>
       <div class="retailer-chip"><span class="r-icon">🛒</span> Walmart</div>
       <div class="retailer-chip"><span class="r-icon">🏷️</span> eBay</div>
-    </div>
-  </section>
-
-  <!-- How it works -->
-  <section id="how">
-    <div class="section-label">How it works</div>
-    <h2>Three steps to cheaper GPUs</h2>
-    <p class="section-desc">
-      Install the extension. Browse like normal. Save money.
-    </p>
-    <div class="steps">
-      <div class="step">
-        <h3>Install the extension</h3>
-        <p>Add GPUSniff to Chrome. It's free, lightweight, and takes 10 seconds.</p>
-      </div>
-      <div class="step">
-        <h3>Browse any GPU product page</h3>
-        <p>Visit Best Buy, Newegg, or any supported retailer. GPUSniff detects the product and shows prices from every other store.</p>
-      </div>
-      <div class="step">
-        <h3>Set alerts and save</h3>
-        <p>Found a GPU you want? Set your target price. GPUSniff checks every 2 hours and notifies you the instant it drops.</p>
-      </div>
+      <div class="retailer-chip"><span class="r-icon">🛍️</span> Tech For Less</div>
     </div>
   </section>
 
@@ -833,20 +820,25 @@
     </div>
   </section>
 
-  <!-- CTA -->
+  <!-- Closing CTA -->
   <section>
-    <div class="cta-section" id="waitlist">
-      <div class="section-label">Early access</div>
-      <h2>Get notified when we launch</h2>
+    <div class="cta-section">
+      <div class="section-label">Get started</div>
+      <h2>Start saving on your next GPU</h2>
       <p class="section-desc">
-        GPUSniff is coming to the Chrome Web Store soon. 
-        Join the waitlist and be the first to sniff out deals.
+        GPUSniff is free, runs in Chrome, and shows only real prices.
+        Add it to your browser and never overpay again.
       </p>
-      <form class="waitlist-form" id="waitlist-form">
-        <input type="email" placeholder="you@email.com" required id="email-input">
-        <button type="submit">Join waitlist</button>
-      </form>
-      <p class="waitlist-note">No spam. Just a launch notification.</p>
+      <div class="hero-actions">
+        <a href="#" class="btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          Add to Chrome — Free
+        </a>
+        <a href="#how" class="btn-secondary">
+          See how it works
+        </a>
+      </div>
+      <p class="cta-note">Free forever · No account · Real prices only</p>
     </div>
   </section>
 
@@ -856,7 +848,7 @@
 
   <footer>
     <div class="footer-left">
-      <span>🐕‍🦺</span>
+      <img src="sniff.png" alt="" class="footer-logo-img">
       <span>&copy; 2026 GPUSniff</span>
     </div>
     <div class="footer-links">
@@ -867,56 +859,16 @@
   </footer>
 
   <script>
-    // Waitlist form → GPUSniff backend (Supabase-backed).
-    const WAITLIST_ENDPOINT = 'https://api.gpusniff.com/api/waitlist';
-    document.getElementById('waitlist-form').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const emailInput = document.getElementById('email-input');
-      const email = emailInput.value.trim();
-      const btn = this.querySelector('button');
-      const originalText = btn.textContent;
-
-      btn.disabled = true;
-      btn.textContent = 'Joining…';
-
-      try {
-        const res = await fetch(WAITLIST_ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, source: 'landing' }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.ok === false) {
-          throw new Error(data.error || 'Something went wrong. Please try again.');
-        }
-
-        btn.textContent = "✓ You're on the list!";
-        btn.style.background = '#2ea043';
-        emailInput.value = '';
-      } catch (err) {
-        // Keep a local record so a backend hiccup never loses a signup.
-        try {
-          const waitlist = JSON.parse(localStorage.getItem('gpusniff_waitlist') || '[]');
-          waitlist.push({ email, date: new Date().toISOString(), synced: false });
-          localStorage.setItem('gpusniff_waitlist', JSON.stringify(waitlist));
-        } catch (_) {}
-        btn.textContent = '⚠ ' + (err.message || 'Try again');
-        btn.style.background = '#b3261e';
-      } finally {
-        setTimeout(() => {
-          btn.textContent = originalText;
-          btn.style.background = '';
-          btn.disabled = false;
-        }, 3000);
-      }
-    });
-
-    // Smooth scroll for anchor links
+    // Smooth scroll for in-page anchors. "#" placeholders (e.g. the
+    // "Add to Chrome" button before the Web Store listing is live) are
+    // treated as no-ops so they don't jump the page.
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
       anchor.addEventListener('click', function(e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
+        const href = this.getAttribute('href');
+        if (!href || href === '#') { e.preventDefault(); return; }
+        const target = document.querySelector(href);
         if (target) {
+          e.preventDefault();
           target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       });
