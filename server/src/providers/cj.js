@@ -10,19 +10,24 @@
  * No-op ([]) unless CJ_PERSONAL_ACCESS_TOKEN + CJ_COMPANY_ID are set.
  *
  * ─── TEMP DEBUG ───────────────────────────────────────────────────────
- * Verbose diagnostics are ON by default and print to the Railway console
- * with a `[CJ DEBUG]` prefix. Set env CJ_DEBUG=false to silence them.
- * Remove this block + the debug calls once Tech For Less is confirmed
- * working. See debugBroadProbe() for the advertiser-3297514 probe.
+ * Verbose diagnostics + the broad advertiser-3297514 probe are OFF by
+ * default (they added extra CJ calls per request). Set env CJ_DEBUG=true
+ * to re-enable them and print to the Railway console with a `[CJ DEBUG]`
+ * prefix. Remove this block + the debug calls once Tech For Less is
+ * confirmed working. See debugBroadProbe() for the probe.
  * ──────────────────────────────────────────────────────────────────────
  */
 import { config } from '../config.js';
 
 const ENDPOINT = 'https://ads.api.cj.com/query';
 const TFL_ADVERTISER_ID = '3297514'; // Tech For Less
+// Abort any CJ request that hasn't completed within this window so a
+// slow/unresponsive CJ endpoint can never hang the server.
+const CJ_TIMEOUT_MS = 10_000;
 
-// TEMP DEBUG: default on; set CJ_DEBUG=false in the environment to disable.
-const DEBUG = process.env.CJ_DEBUG !== 'false';
+// TEMP DEBUG: OFF by default. Set CJ_DEBUG=true to enable verbose logging
+// and the one-time broad probe (both make extra CJ calls).
+const DEBUG = process.env.CJ_DEBUG === 'true';
 let probeDone = false; // run the broad probe once per process, not per request
 
 // Map a CJ advertiser to a GPUSniff retailer key. The advertiser ID is
@@ -97,16 +102,31 @@ async function runCJQuery({ token, companyId, keywords, advertiserIds, label }) 
     console.log(`[CJ DEBUG] (${label}) exact GraphQL query:\n${query}`);
   }
 
-  const res = await fetch(ENDPOINT, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query, variables: { companyId, keywords } }),
-  });
-
-  const rawBody = await res.text();
+  // Hard 10s cap on the whole request (connect + body read) via
+  // AbortController, so a hung CJ endpoint can never stall the server.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CJ_TIMEOUT_MS);
+  let res;
+  let rawBody;
+  try {
+    res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, variables: { companyId, keywords } }),
+      signal: controller.signal,
+    });
+    rawBody = await res.text();
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(`CJ API timeout after ${CJ_TIMEOUT_MS / 1000}s`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (DEBUG) {
     console.log(`[CJ DEBUG] (${label}) HTTP status = ${res.status}`);
@@ -183,13 +203,20 @@ export async function fetchCJOffers(gpu) {
     await debugBroadProbe({ token, companyId });
   }
 
-  const results = await runCJQuery({
-    token,
-    companyId,
-    keywords: gpu.keywords.slice(0, 3),
-    advertiserIds,
-    label: `gpu:${gpu.id}`,
-  });
+  let results;
+  try {
+    results = await runCJQuery({
+      token,
+      companyId,
+      keywords: gpu.keywords.slice(0, 3),
+      advertiserIds,
+      label: `gpu:${gpu.id}`,
+    });
+  } catch (err) {
+    // Timeout or any CJ failure → return no offers rather than hang/throw.
+    console.error(`[GPUSniff] CJ query failed for ${gpu.id}: ${err.message}`);
+    return [];
+  }
 
   // Keep only the cheapest offer per retailer.
   const cheapestByRetailer = new Map();
