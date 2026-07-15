@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPUSniff — Sniff Out the Best GPU Deals</title>
+  <meta name="description" content="GPUSniff tracks GPU and gaming hardware prices across Best Buy, Newegg, Amazon, Walmart, eBay, B&H Photo, and Micro Center. Get price alerts and never overpay for a graphics card again.">
+  <meta property="og:title" content="GPUSniff — Sniff Out the Best GPU Deals">
+  <meta property="og:description" content="Real-time GPU price comparison across 7 major retailers. Browser extension with price alerts.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://gpusniff.com">
+  <link rel="canonical" href="https://gpusniff.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-0: #0B0E13;
+      --bg-1: #0D1117;
+      --bg-2: #161B22;
+      --bg-3: #1C2128;
+      --border: #30363D;
+      --border-light: #21262D;
+      --text-1: #E6EDF3;
+      --text-2: #8B949E;
+      --text-3: #656D76;
+      --green: #3FB950;
+      --green-dim: rgba(63, 185, 80, 0.12);
+      --green-glow: rgba(63, 185, 80, 0.25);
+      --blue: #58A6FF;
+      --blue-dim: rgba(88, 166, 255, 0.1);
+      --orange: #F0883E;
+      --orange-dim: rgba(240, 136, 62, 0.12);
+      --purple: #BC8CFF;
+      --red: #F85149;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg-0);
+      color: var(--text-1);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* Nav */
+    nav {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 100;
+      padding: 16px 0;
+      background: rgba(11, 14, 19, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .logo-icon { font-size: 24px; }
+
+    .logo-text {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text-1);
+    }
+
+    .logo-text span { color: var(--green); }
+
+    .nav-cta {
+      padding: 8px 20px;
+      background: var(--green);
+      color: var(--bg-0);
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .nav-cta:hover { background: #4cc764; transform: translateY(-1px); }
+
+    /* Hero */
+    .hero {
+      padding: 160px 24px 100px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, var(--green-glow) 0%, transparent 70%);
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: var(--green-dim);
+      border: 1px solid var(--green-glow);
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--green);
+      margin-bottom: 28px;
+    }
+
+    .hero-badge .dot {
+      width: 6px;
+      height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    h1 {
+      font-size: clamp(40px, 6vw, 64px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -1.5px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    h1 .highlight {
+      background: linear-gradient(135deg, var(--green), #2ea043);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 18px;
+      color: var(--text-2);
+      max-width: 560px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 48px;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      background: var(--green);
+      color: var(--bg-0);
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .btn-primary:hover { background: #4cc764; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(63,185,80,0.2); }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      background: var(--bg-2);
+      color: var(--text-1);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .btn-secondary:hover { background: var(--bg-3); border-color: var(--text-3); }
+
+    /* Live ticker */
+    .ticker-wrap {
+      max-width: 700px;
+      margin: 0 auto;
+      overflow: hidden;
+      border-radius: 10px;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .ticker {
+      display: flex;
+      animation: scroll 25s linear infinite;
+      width: max-content;
+    }
+
+    .ticker:hover { animation-play-state: paused; }
+
+    @keyframes scroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    .ticker-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 24px;
+      white-space: nowrap;
+      border-right: 1px solid var(--border-light);
+    }
+
+    .ticker-gpu {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .ticker-price {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: var(--green);
+      font-size: 14px;
+    }
+
+    .ticker-retailer {
+      font-size: 12px;
+      color: var(--text-3);
+    }
+
+    .ticker-drop {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--green-dim);
+      color: var(--green);
+    }
+
+    /* Section base */
+    section {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 80px 24px;
+    }
+
+    .section-label {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--green);
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -0.8px;
+      margin-bottom: 16px;
+    }
+
+    .section-desc {
+      font-size: 17px;
+      color: var(--text-2);
+      max-width: 600px;
+      margin-bottom: 48px;
+    }
+
+    /* Features */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      transition: all 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: var(--green);
+      transform: translateY(-2px);
+    }
+
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      font-size: 22px;
+      margin-bottom: 16px;
+    }
+
+    .fi-green { background: var(--green-dim); }
+    .fi-blue { background: var(--blue-dim); }
+    .fi-orange { background: var(--orange-dim); }
+
+    .feature-card h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--text-2);
+      line-height: 1.6;
+    }
+
+    /* Retailers */
+    .retailers-section {
+      text-align: center;
+    }
+
+    .retailers-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 48px;
+    }
+
+    .retailer-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 22px;
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .retailer-chip:hover {
+      border-color: var(--text-3);
+      background: var(--bg-2);
+    }
+
+    .retailer-chip .r-icon { font-size: 20px; }
+
+    /* How it works */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 24px;
+      counter-reset: step;
+    }
+
+    .step {
+      position: relative;
+      padding: 28px;
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      counter-increment: step;
+    }
+
+    .step::before {
+      content: counter(step);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: var(--green-dim);
+      color: var(--green);
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 14px;
+    }
+
+    .step h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .step p {
+      font-size: 14px;
+      color: var(--text-2);
+    }
+
+    /* GPUs supported */
+    .gpu-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 32px;
+    }
+
+    .gpu-tag {
+      padding: 6px 14px;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-2);
+      transition: all 0.15s;
+    }
+
+    .gpu-tag:hover {
+      color: var(--green);
+      border-color: var(--green-glow);
+      background: var(--green-dim);
+    }
+
+    .gpu-tag.nvidia { border-left: 3px solid var(--green); }
+    .gpu-tag.amd { border-left: 3px solid var(--red); }
+    .gpu-tag.intel { border-left: 3px solid var(--blue); }
+
+    /* CTA / Waitlist */
+    .cta-section {
+      text-align: center;
+      padding: 80px 24px;
+      margin: 40px auto;
+      max-width: 1100px;
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, var(--green-glow) 0%, transparent 70%);
+      opacity: 0.15;
+      pointer-events: none;
+    }
+
+    .cta-section h2 {
+      position: relative;
+    }
+
+    .cta-section .section-desc {
+      margin: 0 auto 32px;
+    }
+
+    .waitlist-form {
+      display: flex;
+      gap: 10px;
+      max-width: 440px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .waitlist-form input {
+      flex: 1;
+      height: 48px;
+      padding: 0 16px;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-1);
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .waitlist-form input::placeholder { color: var(--text-3); }
+
+    .waitlist-form input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px var(--green-dim);
+    }
+
+    .waitlist-form button {
+      height: 48px;
+      padding: 0 24px;
+      background: var(--green);
+      color: var(--bg-0);
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .waitlist-form button:hover { background: #4cc764; }
+
+    .waitlist-note {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--text-3);
+      position: relative;
+    }
+
+    /* Footer */
+    footer {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-3);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .footer-links a {
+      font-size: 13px;
+      color: var(--text-3);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .footer-links a:hover { color: var(--text-1); }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .hero { padding: 130px 20px 60px; }
+      .hero-actions { flex-direction: column; align-items: center; }
+      .features-grid { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: 1fr; }
+      .waitlist-form { flex-direction: column; }
+      .waitlist-form button { width: 100%; }
+      footer { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="logo">
+        <span class="logo-icon">🐕‍🦺</span>
+        <span class="logo-text">GPU<span>Sniff</span></span>
+      </a>
+      <a href="#waitlist" class="nav-cta">Get early access</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      Tracking prices across 7 retailers
+    </div>
+    <h1>Never overpay for a<br><span class="highlight">graphics card</span> again</h1>
+    <p class="hero-sub">
+      GPUSniff compares GPU and gaming hardware prices across Best Buy, 
+      Newegg, Amazon, Walmart, and more. Set price alerts and we'll 
+      notify you the moment a deal drops.
+    </p>
+    <div class="hero-actions">
+      <a href="#waitlist" class="btn-primary">
+        🔔 Join the waitlist
+      </a>
+      <a href="#how" class="btn-secondary">
+        See how it works
+      </a>
+    </div>
+    <div class="ticker-wrap">
+      <div class="ticker">
+        <div class="ticker-item">
+          <span class="ticker-gpu">RTX 5070</span>
+          <span class="ticker-price">$519</span>
+          <span class="ticker-retailer">Newegg</span>
+          <span class="ticker-drop">-$30</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-gpu">RX 9070 XT</span>
+          <span class="ticker-price">$529</span>
+          <span class="ticker-retailer">Best Buy</span>
+          <span class="ticker-drop">-$20</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-gpu">RTX 4060 Ti</span>
+          <span class="ticker-price">$349</span>
+          <span class="ticker-retailer">Amazon</span>
+          <span class="ticker-drop">-$50</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-gpu">Arc B580</span>
+          <span class="ticker-price">$219</span>
+          <span class="ticker-retailer">Newegg</span>
+          <span class="ticker-drop">-$30</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-gpu">RX 7800 XT</span>
+          <span class="ticker-price">$439</span>
+          <span class="ticker-retailer">Walmart</span>
+          <span class="ticker-drop">-$60</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-gpu">RTX 4080 Super</span>
+          <span class="ticker-price">$939</span>
+          <span class="ticker-retailer">B&H Photo</span>
+          <span class="ticker-drop">-$60</span>
+        </div>
+        <!-- Duplicate for seamless scroll -->
+        <div class="ticker-item">
+          <span class="ticker-gpu">RTX 5070</span>
+          <span class="ticker-price">$519</span>
+          <span class="ticker-retailer">Newegg</span>
+          <span class="ticker-drop">-$30</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-gpu">RX 9070 XT</span>
+          <span class="ticker-price">$529</span>
+          <span class="ticker-retailer">Best Buy</span>
+          <span class="ticker-drop">-$20</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-gpu">RTX 4060 Ti</span>
+          <span class="ticker-price">$349</span>
+          <span class="ticker-retailer">Amazon</span>
+          <span class="ticker-drop">-$50</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-gpu">Arc B580</span>
+          <span class="ticker-price">$219</span>
+          <span class="ticker-retailer">Newegg</span>
+          <span class="ticker-drop">-$30</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-gpu">RX 7800 XT</span>
+          <span class="ticker-price">$439</span>
+          <span class="ticker-retailer">Walmart</span>
+          <span class="ticker-drop">-$60</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-gpu">RTX 4080 Super</span>
+          <span class="ticker-price">$939</span>
+          <span class="ticker-retailer">B&H Photo</span>
+          <span class="ticker-drop">-$60</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features -->
+  <section>
+    <div class="section-label">Features</div>
+    <h2>Built for deal hunters</h2>
+    <p class="section-desc">
+      GPUSniff runs quietly in your browser, watching prices so you don't have to.
+    </p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon fi-green">🔍</div>
+        <h3>Real-time price comparison</h3>
+        <p>Instantly compare GPU prices across seven major retailers. See who has the best price, what's in stock, and where you can save — all in one view.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-orange">🔔</div>
+        <h3>Price drop alerts</h3>
+        <p>Set a target price for any GPU. When it drops below your threshold at any retailer, you get a browser notification with a direct link to the deal.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-blue">🛒</div>
+        <h3>On-page detection</h3>
+        <p>Browsing a GPU on Best Buy or Newegg? GPUSniff automatically detects the product and shows you if it's cheaper somewhere else. No extra steps.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-green">📦</div>
+        <h3>New &amp; refurbished</h3>
+        <p>Don't just compare new prices. GPUSniff checks open-box, refurbished, and used inventory on eBay and Amazon Renewed too.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-orange">📊</div>
+        <h3>Price history</h3>
+        <p>See how a GPU's price has moved over time. Know whether you're buying at a peak or catching a genuine deal.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-blue">⚡</div>
+        <h3>Fast and lightweight</h3>
+        <p>No bloat, no lag. GPUSniff is a focused tool — it checks prices when you need them and stays out of your way otherwise.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Retailers -->
+  <section class="retailers-section">
+    <div class="section-label">Coverage</div>
+    <h2>Seven retailers. One comparison.</h2>
+    <p class="section-desc" style="margin: 0 auto 0;">
+      We track prices across the retailers that matter for gaming hardware.
+    </p>
+    <div class="retailers-grid">
+      <div class="retailer-chip"><span class="r-icon">🏪</span> Best Buy</div>
+      <div class="retailer-chip"><span class="r-icon">🥚</span> Newegg</div>
+      <div class="retailer-chip"><span class="r-icon">📦</span> Amazon</div>
+      <div class="retailer-chip"><span class="r-icon">📷</span> B&H Photo</div>
+      <div class="retailer-chip"><span class="r-icon">🔧</span> Micro Center</div>
+      <div class="retailer-chip"><span class="r-icon">🛒</span> Walmart</div>
+      <div class="retailer-chip"><span class="r-icon">🏷️</span> eBay</div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section id="how">
+    <div class="section-label">How it works</div>
+    <h2>Three steps to cheaper GPUs</h2>
+    <p class="section-desc">
+      Install the extension. Browse like normal. Save money.
+    </p>
+    <div class="steps">
+      <div class="step">
+        <h3>Install the extension</h3>
+        <p>Add GPUSniff to Chrome. It's free, lightweight, and takes 10 seconds.</p>
+      </div>
+      <div class="step">
+        <h3>Browse any GPU product page</h3>
+        <p>Visit Best Buy, Newegg, or any supported retailer. GPUSniff detects the product and shows prices from every other store.</p>
+      </div>
+      <div class="step">
+        <h3>Set alerts and save</h3>
+        <p>Found a GPU you want? Set your target price. GPUSniff checks every 2 hours and notifies you the instant it drops.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- GPUs covered -->
+  <section style="text-align: center;">
+    <div class="section-label">Coverage</div>
+    <h2>Every GPU that matters</h2>
+    <p class="section-desc" style="margin: 0 auto 0;">
+      NVIDIA, AMD, and Intel — current and previous generation.
+    </p>
+    <div class="gpu-tags">
+      <span class="gpu-tag nvidia">RTX 5090</span>
+      <span class="gpu-tag nvidia">RTX 5080</span>
+      <span class="gpu-tag nvidia">RTX 5070 Ti</span>
+      <span class="gpu-tag nvidia">RTX 5070</span>
+      <span class="gpu-tag nvidia">RTX 5060 Ti</span>
+      <span class="gpu-tag nvidia">RTX 5060</span>
+      <span class="gpu-tag nvidia">RTX 4090</span>
+      <span class="gpu-tag nvidia">RTX 4080 Super</span>
+      <span class="gpu-tag nvidia">RTX 4070 Ti Super</span>
+      <span class="gpu-tag nvidia">RTX 4070 Super</span>
+      <span class="gpu-tag nvidia">RTX 4060 Ti</span>
+      <span class="gpu-tag nvidia">RTX 4060</span>
+      <span class="gpu-tag amd">RX 9070 XT</span>
+      <span class="gpu-tag amd">RX 9070</span>
+      <span class="gpu-tag amd">RX 7900 XTX</span>
+      <span class="gpu-tag amd">RX 7900 XT</span>
+      <span class="gpu-tag amd">RX 7800 XT</span>
+      <span class="gpu-tag amd">RX 7700 XT</span>
+      <span class="gpu-tag amd">RX 7600</span>
+      <span class="gpu-tag intel">Arc B580</span>
+      <span class="gpu-tag intel">Arc A770</span>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section>
+    <div class="cta-section" id="waitlist">
+      <div class="section-label">Early access</div>
+      <h2>Get notified when we launch</h2>
+      <p class="section-desc">
+        GPUSniff is coming to the Chrome Web Store soon. 
+        Join the waitlist and be the first to sniff out deals.
+      </p>
+      <form class="waitlist-form" id="waitlist-form">
+        <input type="email" placeholder="you@email.com" required id="email-input">
+        <button type="submit">Join waitlist</button>
+      </form>
+      <p class="waitlist-note">No spam. Just a launch notification.</p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-left">
+      <span>🐕‍🦺</span>
+      <span>&copy; 2026 GPUSniff</span>
+    </div>
+    <div class="footer-links">
+      <a href="mailto:hello@gpusniff.com">Contact</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </div>
+  </footer>
+
+  <script>
+    // Simple waitlist form handler
+    // Replace with your actual form endpoint (Formspree, Supabase, etc.)
+    document.getElementById('waitlist-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const email = document.getElementById('email-input').value;
+      const btn = this.querySelector('button');
+      const originalText = btn.textContent;
+      
+      // For now, store in localStorage and show confirmation
+      // TODO: Replace with real backend endpoint
+      const waitlist = JSON.parse(localStorage.getItem('gpusniff_waitlist') || '[]');
+      waitlist.push({ email, date: new Date().toISOString() });
+      localStorage.setItem('gpusniff_waitlist', JSON.stringify(waitlist));
+      
+      btn.textContent = '✓ You\'re on the list!';
+      btn.style.background = '#2ea043';
+      document.getElementById('email-input').value = '';
+      
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '';
+      }, 3000);
+    });
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>
