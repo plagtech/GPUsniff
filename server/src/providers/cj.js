@@ -12,11 +12,21 @@ import { config } from '../config.js';
 
 const ENDPOINT = 'https://ads.api.cj.com/query';
 
-// Map an advertiser name (as CJ reports it) to a GPUSniff retailer key.
-function retailerForAdvertiser(name = '') {
-  const n = name.toLowerCase();
+// Map a CJ advertiser to a GPUSniff retailer key. The advertiser ID is
+// the authoritative, stable match; the advertiser name is a fallback for
+// advertisers whose ID we haven't recorded yet.
+const ADVERTISER_ID_TO_RETAILER = {
+  '3297514': 'techforless', // Tech For Less
+};
+
+function retailerForAdvertiser({ advertiserId, advertiserName = '' } = {}) {
+  const byId = ADVERTISER_ID_TO_RETAILER[String(advertiserId)];
+  if (byId) return byId;
+
+  const n = advertiserName.toLowerCase();
   if (n.includes('best buy')) return 'bestbuy';
   if (n.includes('b&h') || n.includes('bhphoto') || n.includes('b & h')) return 'bhphoto';
+  if (n.includes('tech for less') || n.includes('techforless')) return 'techforless';
   return null;
 }
 
@@ -43,6 +53,7 @@ export async function fetchCJOffers(gpu) {
           linkCode(pid: "${config.cj.companyId}") { clickUrl }
           link
           availability
+          advertiserId
           advertiserName
         }
       }
@@ -74,7 +85,7 @@ export async function fetchCJOffers(gpu) {
   const cheapestByRetailer = new Map();
 
   for (const item of results) {
-    const retailer = retailerForAdvertiser(item.advertiserName);
+    const retailer = retailerForAdvertiser(item);
     if (!retailer) continue;
     const sale = num(item.salePrice?.amount);
     const regular = num(item.price?.amount);

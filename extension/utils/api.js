@@ -117,6 +117,13 @@ const RETAILERS = {
     color: '#E53238',
     affiliateNetwork: 'ebay',
   },
+  techforless: {
+    name: 'Tech For Less',
+    domain: 'www.techforless.com',
+    logo: '🛍️',
+    color: '#0F9D8C',
+    affiliateNetwork: 'cj',
+  },
 };
 
 // ============================================================

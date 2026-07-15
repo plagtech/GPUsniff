@@ -44,6 +44,7 @@ export const RETAILERS = {
   microcenter: { name: 'Micro Center', domain: 'microcenter.com', logo: '🔧', color: '#CF202F', affiliateNetwork: 'shareasale' },
   walmart: { name: 'Walmart', domain: 'walmart.com', logo: '🛒', color: '#0071DC', affiliateNetwork: 'impact' },
   ebay: { name: 'eBay', domain: 'ebay.com', logo: '🏷️', color: '#E53238', affiliateNetwork: 'ebay' },
+  techforless: { name: 'Tech For Less', domain: 'www.techforless.com', logo: '🛍️', color: '#0F9D8C', affiliateNetwork: 'cj' },
 };
 
 const BY_ID = new Map(GPU_DATABASE.map((g) => [g.id, g]));
