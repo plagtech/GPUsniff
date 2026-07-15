@@ -22,6 +22,9 @@ dealsRouter.get('/', async (_req, res, next) => {
     settled.forEach((result, i) => {
       if (result.status !== 'fulfilled') return;
       const gpu = getGpuById(FEATURED[i]);
+      // Only real prices reach here — a GPU with no configured provider
+      // returning data has an empty `prices` array and is skipped, so no
+      // fabricated deal is ever surfaced.
       const best = result.value.prices.find((p) => p.inStock) || result.value.prices[0];
       if (!gpu || !best) return;
       deals.push({
@@ -31,7 +34,6 @@ dealsRouter.get('/', async (_req, res, next) => {
         originalPrice: best.originalPrice,
         savings: best.savings || (best.price < gpu.msrp ? round2(gpu.msrp - best.price) : 0),
         badge: badgeFor(gpu, best),
-        estimated: best.estimated,
       });
     });
 

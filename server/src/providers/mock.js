@@ -1,15 +1,23 @@
 /**
- * Mock provider — deterministic-ish stand-in used when no real
- * affiliate keys are configured (or as a fallback for retailers a
- * given provider doesn't cover). Mirrors the shape of a real offer so
- * the extension renders identically whether data is live or mocked.
+ * Mock provider — stand-in data for pure local dev ONLY.
  *
- * Every offer carries `estimated: true` so the aggregator/UI can label
- * it and callers never mistake a guess for a real quoted price.
+ * This runs exclusively when ZERO affiliate providers are configured
+ * (see aggregator.js). The moment any real provider has credentials,
+ * this file is never called, so mock prices can never reach production
+ * or appear alongside real ones.
  */
 import { RETAILERS } from '../gpuDatabase.js';
 
+let warned = false;
+
 export function mockOffers(gpu, retailerKeys = Object.keys(RETAILERS)) {
+  if (!warned) {
+    warned = true;
+    console.warn(
+      '[GPUSniff] WARNING: No API keys configured, running in dev-only mock mode'
+    );
+  }
+
   const basePrice = gpu.msrp;
   return retailerKeys.map((retailerKey) => {
     const variance = Math.random() * 0.15 - 0.05; // -5% .. +10%
@@ -25,7 +33,6 @@ export function mockOffers(gpu, retailerKeys = Object.keys(RETAILERS)) {
       url: mockUrl(retailerKey, gpu),
       shipping: inStock ? (Math.random() > 0.5 ? 'Free' : '$5.99') : null,
       source: 'mock',
-      estimated: true,
     };
   });
 }

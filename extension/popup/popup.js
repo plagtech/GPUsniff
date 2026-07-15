@@ -151,6 +151,17 @@ async function renderDeals() {
   dealsList.innerHTML = '<div class="loading">Sniffing out deals</div>';
   const deals = await getTrendingDeals();
 
+  if (!deals.length) {
+    dealsList.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">📭</span>
+        <p>No live deals right now.</p>
+        <p class="empty-hint">Check back soon — we only show real, in-stock prices.</p>
+      </div>
+    `;
+    return;
+  }
+
   dealsList.innerHTML = deals.map(deal => {
     const retailer = RETAILERS[deal.retailer];
     const badgeClass = deal.badge.toLowerCase().replace(/\s+/g, '-');
@@ -188,8 +199,26 @@ async function renderDeals() {
 // Price Comparison
 // ============================================================
 function renderComparison(gpu, prices) {
+  // No fabricated rows: if no retailer returned a real price, say so.
+  if (!prices.length) {
+    compareContent.innerHTML = `
+      <div class="gpu-header">
+        <h3>${gpu.brand} ${gpu.name}</h3>
+        <div class="msrp">MSRP: $${gpu.msrp}</div>
+      </div>
+      <div class="empty-state">
+        <span class="empty-icon">🔍</span>
+        <p>No live prices found for this GPU right now.</p>
+        <p class="empty-hint">We only show real, in-stock offers — check back soon.</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Render however many retailers actually returned data (1–7). Each row
+  // is a real, clickable offer; there are no empty slots or placeholders.
   const bestPrice = prices.find(p => p.inStock)?.price || prices[0]?.price;
-  
+
   compareContent.innerHTML = `
     <div class="gpu-header">
       <h3>${gpu.brand} ${gpu.name}</h3>

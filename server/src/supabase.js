@@ -25,7 +25,7 @@ export function supabaseReady() {
 /**
  * Insert one row per retailer offer into price_snapshots.
  * @param {string} gpuId
- * @param {object[]} prices decorated price rows (already real, not estimated)
+ * @param {object[]} prices decorated real price rows
  * @param {string} capturedAt ISO timestamp
  */
 export async function recordSnapshots(gpuId, prices, capturedAt) {

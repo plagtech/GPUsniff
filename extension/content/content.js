@@ -233,7 +233,9 @@
         chrome.runtime.sendMessage(
           { type: 'GET_PRICES', gpuId: response.gpu.id },
           (priceResponse) => {
-            if (priceResponse?.prices) {
+            // Only show the widget when we have real prices to compare —
+            // never render an empty widget with no offers.
+            if (priceResponse?.prices?.length) {
               createWidget(response.gpu, product, priceResponse.prices);
             }
           }

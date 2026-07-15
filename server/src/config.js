@@ -1,10 +1,5 @@
 import 'dotenv/config';
 
-function bool(value, fallback) {
-  if (value === undefined) return fallback;
-  return String(value).toLowerCase() === 'true';
-}
-
 function list(value) {
   if (!value) return [];
   return value.split(',').map((s) => s.trim()).filter(Boolean);
@@ -25,7 +20,6 @@ export const config = {
       ...list(process.env.CORS_ORIGIN || process.env.ALLOWED_ORIGINS),
     ]),
   ],
-  allowMockFallback: bool(process.env.ALLOW_MOCK_FALLBACK, true),
   priceCacheTtlSeconds: Number(process.env.PRICE_CACHE_TTL_SECONDS) || 900,
 
   bestbuy: {
@@ -54,13 +48,20 @@ export const config = {
   },
 };
 
+/**
+ * Per-provider "is this configured well enough to return real data?"
+ * predicates. Each mirrors the guard inside the provider module, so a
+ * provider is only ever queried when it can actually authenticate.
+ */
+export const providerStatus = {
+  bestbuy: () => Boolean(config.bestbuy.apiKey),
+  cj: () => Boolean(config.cj.token && config.cj.companyId),
+  ebay: () =>
+    Boolean(config.ebay.token || (config.ebay.clientId && config.ebay.clientSecret)),
+  walmart: () => Boolean(config.impact.accountSid && config.impact.authToken),
+};
+
 /** True when at least one real affiliate provider is configured. */
 export function hasAnyProvider() {
-  return Boolean(
-    config.bestbuy.apiKey ||
-      config.cj.token ||
-      config.ebay.token ||
-      config.ebay.clientId ||
-      config.impact.authToken
-  );
+  return Object.values(providerStatus).some((isConfigured) => isConfigured());
 }

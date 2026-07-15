@@ -151,106 +151,6 @@ function detectRetailer(url) {
 }
 
 // ============================================================
-// Price Fetching (Mock → Real API swap points)
-// ============================================================
-
-/**
- * Generate mock price data for a GPU across retailers.
- * REPLACE: each case with real affiliate API calls.
- */
-function getMockPrices(gpuId) {
-  const gpu = GPU_DATABASE.find(g => g.id === gpuId);
-  if (!gpu) return [];
-
-  const basePrice = gpu.msrp;
-  const retailers = Object.keys(RETAILERS);
-  const results = [];
-
-  for (const retailerKey of retailers) {
-    // Simulate realistic price variation
-    const variance = (Math.random() * 0.15) - 0.05; // -5% to +10%
-    const price = Math.round((basePrice * (1 + variance)) * 100) / 100;
-    const inStock = Math.random() > 0.2; // 80% in stock
-    const hasDiscount = Math.random() > 0.65;
-    const originalPrice = hasDiscount ? Math.round(price * 1.12 * 100) / 100 : null;
-
-    results.push({
-      retailer: retailerKey,
-      retailerName: RETAILERS[retailerKey].name,
-      retailerLogo: RETAILERS[retailerKey].logo,
-      retailerColor: RETAILERS[retailerKey].color,
-      price: price,
-      originalPrice: originalPrice,
-      savings: originalPrice ? Math.round((originalPrice - price) * 100) / 100 : 0,
-      inStock: inStock,
-      url: generateMockUrl(retailerKey, gpu),
-      lastChecked: new Date().toISOString(),
-      shipping: inStock ? (Math.random() > 0.5 ? 'Free' : '$5.99') : null,
-    });
-  }
-
-  // Sort by price
-  results.sort((a, b) => a.price - b.price);
-  return results;
-}
-
-function generateMockUrl(retailerKey, gpu) {
-  const slugName = gpu.name.toLowerCase().replace(/\s+/g, '-');
-  const urls = {
-    bestbuy: `https://www.bestbuy.com/site/nvidia-geforce-${slugName}/`,
-    newegg: `https://www.newegg.com/p/N82E16814`,
-    amazon: `https://www.amazon.com/dp/B0EXAMPLE`,
-    bhphoto: `https://www.bhphotovideo.com/c/product/${slugName}`,
-    microcenter: `https://www.microcenter.com/product/nvidia-geforce-${slugName}`,
-    walmart: `https://www.walmart.com/ip/NVIDIA-GeForce-${slugName}`,
-    ebay: `https://www.ebay.com/itm/nvidia-geforce-${slugName}`,
-  };
-  return urls[retailerKey] || '#';
-}
-
-// ============================================================
-// Real API integration stubs
-// ============================================================
-
-/**
- * TODO: CJ Affiliate API — Best Buy, B&H Photo
- * Endpoint: https://productcatalog.api.cj.com/query
- * Auth: Bearer token
- */
-async function fetchCJPrices(gpuName) {
-  if (!CONFIG.cj.apiKey) return [];
-  // const response = await fetch('https://productcatalog.api.cj.com/query', {
-  //   method: 'POST',
-  //   headers: {
-  //     'Authorization': `Bearer ${CONFIG.cj.apiKey}`,
-  //     'Content-Type': 'application/json',
-  //   },
-  //   body: JSON.stringify({
-  //     query: `{ products(partnerIds: ["..."], keywords: "${gpuName}") { ... } }`
-  //   })
-  // });
-  return [];
-}
-
-/**
- * TODO: Impact Radius API — Walmart, Target
- * Endpoint: https://api.impact.com/
- */
-async function fetchImpactPrices(gpuName) {
-  if (!CONFIG.impact.apiKey) return [];
-  return [];
-}
-
-/**
- * TODO: eBay Partner Network — Browse API
- * Endpoint: https://api.ebay.com/buy/browse/v1/item_summary/search
- */
-async function fetchEbayPrices(gpuName) {
-  if (!CONFIG.ebay.appId) return [];
-  return [];
-}
-
-// ============================================================
 // Backend client
 // ============================================================
 
@@ -291,21 +191,19 @@ async function backendFetch(path) {
 // ============================================================
 
 /**
- * Fetch prices for a GPU across all retailers.
- * Returns sorted array of price results. Falls back to on-device mock
- * data if the backend is disabled or unreachable.
+ * Fetch real prices for a GPU across retailers from the backend.
+ * Returns a (possibly empty) array of real, clickable price results —
+ * never fabricated data. If the backend is unreachable, returns [] so
+ * the UI can show an honest "couldn't load prices" state.
  */
 async function fetchPrices(gpuId) {
-  if (CONFIG.useLiveData) {
-    try {
-      const prices = await backendFetch(`/api/prices/${gpuId}`);
-      if (Array.isArray(prices) && prices.length) return prices;
-      console.warn('[GPUSniff] backend returned no prices, using mock');
-    } catch (err) {
-      console.error('[GPUSniff] price API error, falling back to mock:', err);
-    }
+  try {
+    const prices = await backendFetch(`/api/prices/${gpuId}`);
+    return Array.isArray(prices) ? prices : [];
+  } catch (err) {
+    console.error('[GPUSniff] price API error:', err);
+    return [];
   }
-  return getMockPrices(gpuId);
 }
 
 /**
@@ -337,61 +235,19 @@ function searchGPUs(query) {
 }
 
 /**
- * Get trending deals. Fetches live deals from the backend and falls
- * back to a curated mock list if the backend is disabled/unreachable.
+ * Get real trending deals from the backend. Returns a (possibly empty)
+ * array of real deals — never fabricated. Returns [] if the backend is
+ * unreachable so the UI can show an honest empty state.
  * Returns a Promise (callers must await).
  */
 async function getTrendingDeals() {
-  if (CONFIG.useLiveData) {
-    try {
-      const deals = await backendFetch('/api/deals');
-      if (Array.isArray(deals) && deals.length) return deals;
-    } catch (err) {
-      console.error('[GPUSniff] deals API error, falling back to mock:', err);
-    }
+  try {
+    const deals = await backendFetch('/api/deals');
+    return Array.isArray(deals) ? deals : [];
+  } catch (err) {
+    console.error('[GPUSniff] deals API error:', err);
+    return [];
   }
-  return getMockTrendingDeals();
-}
-
-/**
- * Curated mock trending deals (offline fallback).
- */
-function getMockTrendingDeals() {
-  const deals = [
-    {
-      gpu: GPU_DATABASE.find(g => g.id === 'rtx-5070'),
-      retailer: 'newegg',
-      price: 519.99,
-      originalPrice: 549.99,
-      savings: 30,
-      badge: 'Price Drop',
-    },
-    {
-      gpu: GPU_DATABASE.find(g => g.id === 'rx-9070-xt'),
-      retailer: 'bestbuy',
-      price: 529.99,
-      originalPrice: 549.99,
-      savings: 20,
-      badge: 'In Stock',
-    },
-    {
-      gpu: GPU_DATABASE.find(g => g.id === 'rtx-4060-ti'),
-      retailer: 'amazon',
-      price: 349.99,
-      originalPrice: 399.99,
-      savings: 50,
-      badge: 'Best Price',
-    },
-    {
-      gpu: GPU_DATABASE.find(g => g.id === 'arc-b580'),
-      retailer: 'newegg',
-      price: 219.99,
-      originalPrice: 249.99,
-      savings: 30,
-      badge: 'Budget Pick',
-    },
-  ];
-  return deals;
 }
 
 // ============================================================
@@ -409,5 +265,4 @@ export {
   fetchHistory,
   searchGPUs,
   getTrendingDeals,
-  getMockPrices,
 };

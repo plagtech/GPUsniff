@@ -32,11 +32,14 @@ app.use(
 
 // ---------- Health ----------
 app.get('/health', (_req, res) => {
+  const live = hasAnyProvider();
   res.json({
     status: 'ok',
-    liveProviders: hasAnyProvider(),
+    liveProviders: live,
+    // True only when ZERO providers are configured (pure local dev).
+    // Always false in production.
+    devMockMode: !live,
     supabase: supabaseReady(),
-    mockFallback: config.allowMockFallback,
   });
 });
 

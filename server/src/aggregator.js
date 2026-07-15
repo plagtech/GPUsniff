@@ -1,18 +1,21 @@
 /**
  * Aggregation layer: turn raw provider offers into the sorted,
- * display-ready price list the extension expects — the same shape the
- * old mock `fetchPrices()` produced, so the extension UI is unchanged.
+ * display-ready price list the extension expects.
  *
- * Merge rules:
- *  - Keep the cheapest real offer per retailer (a retailer can be fed by
- *    more than one provider, e.g. Best Buy via both its own API and CJ).
- *  - Retailers with no real offer are filled with an `estimated` mock
- *    price when ALLOW_MOCK_FALLBACK is on, so the table is never empty.
- *  - Results are cached per-GPU for PRICE_CACHE_TTL_SECONDS.
+ * Every price returned is REAL — quoted by a configured affiliate
+ * provider and clickable. There is no gap-filling: a retailer with no
+ * real offer simply doesn't appear in the response.
+ *
+ * The only exception is pure local dev with ZERO providers configured,
+ * where `mockOffers` supplies stand-in data so the UI can be exercised
+ * offline. That path can never run in production because production has
+ * at least one provider configured (`hasAnyProvider()` is true).
+ *
+ * Results are cached per-GPU for PRICE_CACHE_TTL_SECONDS.
  */
-import { config } from './config.js';
+import { config, hasAnyProvider } from './config.js';
 import { cache } from './cache.js';
-import { RETAILERS, getGpuById, retailerMeta } from './gpuDatabase.js';
+import { getGpuById, retailerMeta } from './gpuDatabase.js';
 import { fetchAllRealOffers } from './providers/index.js';
 import { mockOffers } from './providers/mock.js';
 import { recordSnapshots } from './supabase.js';
@@ -34,7 +37,6 @@ function decorate(offer, nowIso) {
     shipping: offer.shipping ?? null,
     lastChecked: nowIso,
     source: offer.source || 'unknown',
-    estimated: Boolean(offer.estimated),
     ...(offer.sku ? { sku: offer.sku } : {}),
   };
 }
@@ -43,25 +45,18 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
-/** Merge real offers (cheapest per retailer) + mock fill for the rest. */
-function mergeOffers(gpu, realOffers) {
-  const cheapestByRetailer = new Map();
-  for (const offer of realOffers) {
+/** Keep only the cheapest offer per retailer (a retailer can be fed by
+ *  more than one provider, e.g. Best Buy via both its own API and CJ). */
+function cheapestPerRetailer(offers) {
+  const byRetailer = new Map();
+  for (const offer of offers) {
     if (offer.price == null) continue;
-    const current = cheapestByRetailer.get(offer.retailer);
+    const current = byRetailer.get(offer.retailer);
     if (!current || offer.price < current.price) {
-      cheapestByRetailer.set(offer.retailer, offer);
+      byRetailer.set(offer.retailer, offer);
     }
   }
-
-  if (config.allowMockFallback) {
-    const missing = Object.keys(RETAILERS).filter((k) => !cheapestByRetailer.has(k));
-    for (const offer of mockOffers(gpu, missing)) {
-      cheapestByRetailer.set(offer.retailer, offer);
-    }
-  }
-
-  return [...cheapestByRetailer.values()];
+  return [...byRetailer.values()];
 }
 
 /**
@@ -81,20 +76,31 @@ export async function getPrices(gpuId) {
   if (cached) return { ...cached, cached: true };
 
   const nowIso = new Date().toISOString();
-  const { offers, errors } = await fetchAllRealOffers(gpu);
-  const merged = mergeOffers(gpu, offers);
-  const prices = merged.map((o) => decorate(o, nowIso)).sort((a, b) => a.price - b.price);
+  const live = hasAnyProvider();
+
+  // Live: only real offers from configured providers. No provider ⇒ no row.
+  // Dev-only (zero providers configured): stand-in data so the UI works offline.
+  let offers = [];
+  let errors = [];
+  if (live) {
+    ({ offers, errors } = await fetchAllRealOffers(gpu));
+  } else {
+    offers = mockOffers(gpu);
+  }
+
+  const prices = cheapestPerRetailer(offers)
+    .map((o) => decorate(o, nowIso))
+    .sort((a, b) => a.price - b.price);
 
   const payload = { gpuId, prices, errors };
   cache.set(cacheKey, payload, config.priceCacheTtlSeconds);
 
-  // Persist real (non-estimated) snapshots for price history. Fire-and-forget;
-  // never let a storage hiccup block the price response.
-  recordSnapshots(
-    gpuId,
-    prices.filter((p) => !p.estimated),
-    nowIso
-  ).catch((e) => console.error('[GPUSniff] snapshot write failed:', e.message));
+  // Only persist real prices to price history — never mock dev data.
+  if (live && prices.length) {
+    recordSnapshots(gpuId, prices, nowIso).catch((e) =>
+      console.error('[GPUSniff] snapshot write failed:', e.message)
+    );
+  }
 
   return { ...payload, cached: false };
 }
