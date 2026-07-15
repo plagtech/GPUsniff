@@ -59,13 +59,17 @@ function buildQuery(companyId, advertiserIds) {
         totalCount
         resultList {
           title
-          price { amount currency }
-          salePrice { amount currency }
-          linkCode(pid: "${companyId}") { clickUrl }
           link
-          availability
+          linkCode(pid: "${companyId}") { clickUrl }
           advertiserId
           advertiserName
+          # Commerce fields live on the Shopping type, not the Product
+          # interface, so they must be selected via an inline fragment.
+          ... on Shopping {
+            availability
+            price { amount currency }
+            salePrice { amount currency }
+          }
         }
       }
     }`;
