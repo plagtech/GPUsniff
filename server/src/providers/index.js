@@ -12,12 +12,14 @@ import { fetchBestBuyOffers } from './bestbuy.js';
 import { fetchCJOffers } from './cj.js';
 import { fetchEbayOffers } from './ebay.js';
 import { fetchWalmartOffers } from './walmart.js';
+import { fetchRakutenOffers } from './rakuten.js';
 
 const PROVIDERS = [
   { name: 'bestbuy', run: fetchBestBuyOffers, isConfigured: providerStatus.bestbuy },
   { name: 'cj', run: fetchCJOffers, isConfigured: providerStatus.cj },
   { name: 'ebay', run: fetchEbayOffers, isConfigured: providerStatus.ebay },
   { name: 'walmart', run: fetchWalmartOffers, isConfigured: providerStatus.walmart },
+  { name: 'rakuten', run: fetchRakutenOffers, isConfigured: providerStatus.rakuten },
 ];
 
 /**

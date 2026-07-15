@@ -38,7 +38,7 @@ export const GPU_DATABASE = [
 
 export const RETAILERS = {
   bestbuy: { name: 'Best Buy', domain: 'bestbuy.com', logo: '🏪', color: '#0046BE', affiliateNetwork: 'cj' },
-  newegg: { name: 'Newegg', domain: 'newegg.com', logo: '🥚', color: '#F7A000', affiliateNetwork: 'partnerize' },
+  newegg: { name: 'Newegg', domain: 'newegg.com', logo: '🥚', color: '#F7A000', affiliateNetwork: 'rakuten' },
   amazon: { name: 'Amazon', domain: 'amazon.com', logo: '📦', color: '#FF9900', affiliateNetwork: 'amazon' },
   bhphoto: { name: 'B&H Photo', domain: 'bhphotovideo.com', logo: '📷', color: '#00A0E3', affiliateNetwork: 'cj' },
   microcenter: { name: 'Micro Center', domain: 'microcenter.com', logo: '🔧', color: '#CF202F', affiliateNetwork: 'shareasale' },
