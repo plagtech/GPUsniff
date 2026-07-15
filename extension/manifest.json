@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "GPUSniff",
+  "version": "1.0.0",
+  "description": "Sniff out the best GPU & gaming hardware deals across retailers. Price comparison, alerts, and deal tracking.",
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://www.bestbuy.com/*",
+    "https://www.newegg.com/*",
+    "https://www.amazon.com/*",
+    "https://www.bhphotovideo.com/*",
+    "https://www.microcenter.com/*",
+    "https://www.walmart.com/*",
+    "https://www.ebay.com/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.bestbuy.com/site/*",
+        "https://www.newegg.com/p/*",
+        "https://www.newegg.com/*/*/p/*",
+        "https://www.amazon.com/*/dp/*",
+        "https://www.amazon.com/dp/*",
+        "https://www.bhphotovideo.com/c/*",
+        "https://www.microcenter.com/product/*",
+        "https://www.walmart.com/ip/*",
+        "https://www.ebay.com/itm/*"
+      ],
+      "js": ["content/content.js"],
+      "css": ["content/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "options_page": "options/options.html"
+}

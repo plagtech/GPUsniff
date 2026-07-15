@@ -1,0 +1,233 @@
+/* ============================================================
+   GPUSniff — Content Script Widget Styles
+   Scoped with #gpusniff- prefix to avoid conflicts
+   ============================================================ */
+
+#gpusniff-widget {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 2147483647;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#gpusniff-widget.gpusniff-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+#gpusniff-widget.gpusniff-hiding {
+  opacity: 0;
+  transform: translateY(10px) scale(0.95);
+  transition-duration: 0.15s;
+}
+
+.gpusniff-widget-inner {
+  width: 320px;
+  background: #0D1117;
+  border: 1px solid #30363D;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+  overflow: hidden;
+  color: #E6EDF3;
+}
+
+/* Header */
+.gpusniff-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #161B22;
+  border-bottom: 1px solid #30363D;
+}
+
+.gpusniff-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gpusniff-icon {
+  font-size: 16px;
+}
+
+.gpusniff-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.gpusniff-accent {
+  color: #3FB950;
+}
+
+.gpusniff-close {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid #30363D;
+  border-radius: 6px;
+  color: #8B949E;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s;
+}
+
+.gpusniff-close:hover {
+  background: #252B33;
+  color: #E6EDF3;
+  border-color: #8B949E;
+}
+
+/* Detected Product */
+.gpusniff-detected {
+  padding: 10px 14px;
+  border-bottom: 1px solid #21262D;
+}
+
+.gpusniff-gpu-name {
+  font-weight: 700;
+  font-size: 15px;
+  display: block;
+}
+
+.gpusniff-savings-banner {
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: rgba(63, 185, 80, 0.12);
+  border: 1px solid rgba(63, 185, 80, 0.25);
+  border-radius: 6px;
+  color: #3FB950;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Price List */
+.gpusniff-prices {
+  padding: 6px 8px;
+}
+
+.gpusniff-price-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #E6EDF3;
+  cursor: pointer;
+  transition: background 0.1s;
+  gap: 8px;
+}
+
+.gpusniff-price-row:hover {
+  background: #252B33;
+}
+
+.gpusniff-price-row.gpusniff-best {
+  background: rgba(63, 185, 80, 0.08);
+  border: 1px solid rgba(63, 185, 80, 0.2);
+}
+
+.gpusniff-retailer {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.gpusniff-stock {
+  font-size: 10px;
+  font-weight: 600;
+  width: 16px;
+  text-align: center;
+}
+
+.gpusniff-in-stock {
+  color: #3FB950;
+}
+
+.gpusniff-oos {
+  color: #F85149;
+}
+
+.gpusniff-price {
+  font-family: 'JetBrains Mono', 'Cascadia Code', monospace;
+  font-weight: 700;
+  font-size: 13px;
+  color: #E6EDF3;
+}
+
+.gpusniff-price-best {
+  color: #3FB950;
+}
+
+/* Actions */
+.gpusniff-actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 14px;
+}
+
+.gpusniff-btn {
+  flex: 1;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.gpusniff-btn-alert {
+  background: #3FB950;
+  color: #0D1117;
+}
+
+.gpusniff-btn-alert:hover {
+  background: #4cc764;
+}
+
+.gpusniff-btn-alert:disabled {
+  background: #252B33;
+  color: #8B949E;
+  cursor: default;
+}
+
+.gpusniff-btn-expand {
+  background: #252B33;
+  color: #E6EDF3;
+  border: 1px solid #30363D;
+}
+
+.gpusniff-btn-expand:hover {
+  background: #30363D;
+}
+
+/* Footer */
+.gpusniff-footer {
+  padding: 6px 14px 8px;
+  font-size: 10px;
+  color: #656D76;
+  text-align: center;
+  border-top: 1px solid #21262D;
+}
+
+.gpusniff-footer a {
+  color: #58A6FF;
+  text-decoration: none;
+}
+
+.gpusniff-footer a:hover {
+  text-decoration: underline;
+}

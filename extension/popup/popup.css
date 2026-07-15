@@ -1,0 +1,759 @@
+/* ============================================================
+   GPUSniff — Popup Styles
+   Dark theme, gaming hardware aesthetic
+   ============================================================ */
+
+:root {
+  --bg-primary: #0D1117;
+  --bg-secondary: #161B22;
+  --bg-card: #1C2128;
+  --bg-hover: #252B33;
+  --border: #30363D;
+  --border-light: #21262D;
+  
+  --text-primary: #E6EDF3;
+  --text-secondary: #8B949E;
+  --text-muted: #656D76;
+  
+  --accent-green: #3FB950;
+  --accent-green-dim: rgba(63, 185, 80, 0.15);
+  --accent-orange: #F0883E;
+  --accent-orange-dim: rgba(240, 136, 62, 0.15);
+  --accent-blue: #58A6FF;
+  --accent-blue-dim: rgba(88, 166, 255, 0.12);
+  --accent-red: #F85149;
+  --accent-red-dim: rgba(248, 81, 73, 0.15);
+  --accent-purple: #BC8CFF;
+  
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-float: 0 8px 24px rgba(0,0,0,0.4);
+  
+  --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 380px;
+  min-height: 500px;
+  max-height: 600px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-y: auto;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ---- Header ---- */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-icon {
+  font-size: 20px;
+}
+
+.header-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+}
+
+.header-title .accent {
+  color: var(--accent-green);
+}
+
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+/* ---- Search ---- */
+.search-container {
+  padding: 12px 16px;
+  position: relative;
+}
+
+.search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+#search-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 32px 0 32px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+#search-input::placeholder {
+  color: var(--text-muted);
+}
+
+#search-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px var(--accent-blue-dim);
+}
+
+.search-clear {
+  position: absolute;
+  right: 10px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.search-clear:hover {
+  color: var(--text-primary);
+}
+
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 16px;
+  right: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background: var(--bg-hover);
+}
+
+.search-result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.search-result-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.search-result-brand {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.search-result-msrp {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ---- Tabs ---- */
+.tabs {
+  display: flex;
+  padding: 0 16px;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  flex: 1;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.tab.active {
+  color: var(--accent-green);
+  border-bottom-color: var(--accent-green);
+}
+
+/* ---- Content ---- */
+.content {
+  padding: 12px 16px;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.section-header h2 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.badge-live {
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ---- Deal Cards ---- */
+.deals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.deal-card:hover {
+  border-color: var(--accent-green);
+  background: var(--bg-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card);
+}
+
+.deal-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.deal-gpu-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.deal-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.deal-badge-price-drop {
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
+}
+
+.deal-badge-in-stock {
+  background: var(--accent-blue-dim);
+  color: var(--accent-blue);
+}
+
+.deal-badge-best-price {
+  background: var(--accent-orange-dim);
+  color: var(--accent-orange);
+}
+
+.deal-badge-budget-pick {
+  background: var(--accent-purple);
+  color: var(--bg-primary);
+}
+
+.deal-card-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.deal-retailer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.deal-pricing {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.deal-price {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-green);
+}
+
+.deal-original-price {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.deal-savings {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-green);
+}
+
+/* ---- Price Comparison Table ---- */
+.compare-content .gpu-header {
+  text-align: center;
+  padding: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+}
+
+.gpu-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.gpu-header .msrp {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.price-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.price-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+  gap: 10px;
+}
+
+.price-row:hover {
+  border-color: var(--accent-green);
+  background: var(--bg-hover);
+}
+
+.price-row.best-price {
+  border-color: var(--accent-green);
+  background: var(--accent-green-dim);
+}
+
+.price-row-rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  width: 20px;
+  text-align: center;
+}
+
+.price-row.best-price .price-row-rank {
+  color: var(--accent-green);
+}
+
+.price-row-retailer {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.price-row-price {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.price-row.best-price .price-row-price {
+  color: var(--accent-green);
+}
+
+.price-row-stock {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.stock-in {
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
+}
+
+.stock-out {
+  background: var(--accent-red-dim);
+  color: var(--accent-red);
+}
+
+.price-row-shipping {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.compare-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+}
+
+.btn-primary {
+  background: var(--accent-green);
+  color: var(--bg-primary);
+}
+
+.btn-primary:hover {
+  background: #4cc764;
+}
+
+.btn-secondary {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--border);
+}
+
+.btn-full {
+  width: 100%;
+}
+
+/* ---- Alerts ---- */
+.alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.alert-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.alert-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.alert-gpu-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.alert-target {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.alert-target span {
+  color: var(--accent-green);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.alert-remove {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.alert-remove:hover {
+  background: var(--accent-red-dim);
+  color: var(--accent-red);
+}
+
+/* ---- Empty State ---- */
+.empty-state {
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--text-secondary);
+}
+
+.empty-icon {
+  font-size: 28px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  margin-bottom: 4px;
+}
+
+.empty-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ---- Alert Modal ---- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal {
+  width: 320px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-float);
+}
+
+.modal h3 {
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.modal .modal-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.modal-field {
+  margin-bottom: 16px;
+}
+
+.modal-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.modal-field input {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font-mono);
+  outline: none;
+}
+
+.modal-field input:focus {
+  border-color: var(--accent-green);
+  box-shadow: 0 0 0 3px var(--accent-green-dim);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ---- Footer ---- */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.footer a {
+  color: var(--accent-blue);
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
+
+/* ---- Utilities ---- */
+.hidden {
+  display: none !important;
+}
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-muted);
+}
+
+.loading::after {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent-green);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
