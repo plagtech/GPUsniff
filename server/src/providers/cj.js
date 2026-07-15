@@ -3,20 +3,33 @@
  * Docs: https://developers.cj.com/graphql/reference/Product%20Search
  *
  * One request returns products across all advertisers you're joined
- * with. We map results back to GPUSniff retailer keys by matching the
- * advertiser name, so a single call feeds both Best Buy and B&H Photo.
+ * with. We map results back to GPUSniff retailer keys by advertiser id
+ * (fallback: advertiser name), so a single call feeds Best Buy, B&H,
+ * and Tech For Less.
  *
  * No-op ([]) unless CJ_PERSONAL_ACCESS_TOKEN + CJ_COMPANY_ID are set.
+ *
+ * ─── TEMP DEBUG ───────────────────────────────────────────────────────
+ * Verbose diagnostics are ON by default and print to the Railway console
+ * with a `[CJ DEBUG]` prefix. Set env CJ_DEBUG=false to silence them.
+ * Remove this block + the debug calls once Tech For Less is confirmed
+ * working. See debugBroadProbe() for the advertiser-3297514 probe.
+ * ──────────────────────────────────────────────────────────────────────
  */
 import { config } from '../config.js';
 
 const ENDPOINT = 'https://ads.api.cj.com/query';
+const TFL_ADVERTISER_ID = '3297514'; // Tech For Less
+
+// TEMP DEBUG: default on; set CJ_DEBUG=false in the environment to disable.
+const DEBUG = process.env.CJ_DEBUG !== 'false';
+let probeDone = false; // run the broad probe once per process, not per request
 
 // Map a CJ advertiser to a GPUSniff retailer key. The advertiser ID is
 // the authoritative, stable match; the advertiser name is a fallback for
 // advertisers whose ID we haven't recorded yet.
 const ADVERTISER_ID_TO_RETAILER = {
-  '3297514': 'techforless', // Tech For Less
+  [TFL_ADVERTISER_ID]: 'techforless',
 };
 
 function retailerForAdvertiser({ advertiserId, advertiserName = '' } = {}) {
@@ -30,15 +43,13 @@ function retailerForAdvertiser({ advertiserId, advertiserName = '' } = {}) {
   return null;
 }
 
-export async function fetchCJOffers(gpu) {
-  const { token, companyId, advertiserIds } = config.cj;
-  if (!token || !companyId) return [];
-
+// Build the GraphQL query string. `advertiserIds` (when non-empty) is
+// injected as `partnerIds` to restrict results to those advertisers.
+function buildQuery(companyId, advertiserIds) {
   const advertiserFilter = advertiserIds.length
     ? `, partnerIds: [${advertiserIds.map((id) => `"${id}"`).join(', ')}]`
     : '';
-
-  const query = `
+  return `
     query ProductSearch($companyId: ID!, $keywords: [String!]!) {
       products(
         companyId: $companyId
@@ -50,7 +61,7 @@ export async function fetchCJOffers(gpu) {
           title
           price { amount currency }
           salePrice { amount currency }
-          linkCode(pid: "${config.cj.companyId}") { clickUrl }
+          linkCode(pid: "${companyId}") { clickUrl }
           link
           availability
           advertiserId
@@ -58,6 +69,29 @@ export async function fetchCJOffers(gpu) {
         }
       }
     }`;
+}
+
+/**
+ * Run one CJ query and return its resultList. Emits [CJ DEBUG] logs for
+ * the exact query, whether advertiser 3297514 is targeted, and the raw
+ * response body (before any filtering).
+ */
+async function runCJQuery({ token, companyId, keywords, advertiserIds, label }) {
+  const query = buildQuery(companyId, advertiserIds);
+
+  if (DEBUG) {
+    console.log(`[CJ DEBUG] (${label}) keywords = ${JSON.stringify(keywords)}`);
+    console.log(
+      `[CJ DEBUG] (${label}) advertiserIds sent = ${JSON.stringify(advertiserIds)}` +
+        (advertiserIds.length ? '' : '  (empty → ALL joined advertisers)')
+    );
+    console.log(
+      `[CJ DEBUG] (${label}) advertiser 3297514 targeted? ` +
+        `${advertiserIds.includes(TFL_ADVERTISER_ID)}  |  ` +
+        `present in query string? ${query.includes(TFL_ADVERTISER_ID)}`
+    );
+    console.log(`[CJ DEBUG] (${label}) exact GraphQL query:\n${query}`);
+  }
 
   const res = await fetch(ENDPOINT, {
     method: 'POST',
@@ -65,22 +99,94 @@ export async function fetchCJOffers(gpu) {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      query,
-      variables: { companyId, keywords: gpu.keywords.slice(0, 3) },
-    }),
+    body: JSON.stringify({ query, variables: { companyId, keywords } }),
   });
 
-  if (!res.ok) {
-    throw new Error(`CJ API ${res.status}: ${await safeText(res)}`);
+  const rawBody = await res.text();
+
+  if (DEBUG) {
+    console.log(`[CJ DEBUG] (${label}) HTTP status = ${res.status}`);
+    console.log(`[CJ DEBUG] (${label}) raw response (pre-filter):\n${rawBody.slice(0, 2000)}`);
   }
-  const json = await res.json();
+
+  if (!res.ok) {
+    throw new Error(`CJ API ${res.status}: ${rawBody.slice(0, 200)}`);
+  }
+
+  let json;
+  try {
+    json = JSON.parse(rawBody);
+  } catch {
+    throw new Error('CJ returned non-JSON response');
+  }
   if (json.errors?.length) {
     throw new Error(`CJ GraphQL error: ${json.errors[0]?.message}`);
   }
 
-  const results = json.data?.products?.resultList ?? [];
-  const offers = [];
+  const list = json.data?.products?.resultList ?? [];
+  if (DEBUG) {
+    const total = json.data?.products?.totalCount;
+    console.log(
+      `[CJ DEBUG] (${label}) totalCount=${total ?? 'n/a'}, resultList length=${list.length}`
+    );
+  }
+  return list;
+}
+
+/**
+ * TEMP DEBUG: broad probe against advertiser 3297514 (Tech For Less).
+ * Ignores GPU model names and searches generic terms so we can tell
+ * whether CJ returns ANY Tech For Less products at all. Runs once per
+ * process. If these come back empty, the issue is account linkage /
+ * advertiser id / the partnerIds argument — not keyword narrowness.
+ */
+async function debugBroadProbe({ token, companyId }) {
+  console.log('[CJ DEBUG] ===== Tech For Less broad probe (advertiser 3297514) =====');
+  const broadTerms = ['graphics card', 'gpu', 'geforce rtx', 'radeon'];
+  for (const term of broadTerms) {
+    try {
+      const results = await runCJQuery({
+        token,
+        companyId,
+        keywords: [term],
+        advertiserIds: [TFL_ADVERTISER_ID],
+        label: `probe:"${term}"`,
+      });
+      const tfl = results.filter((r) => String(r.advertiserId) === TFL_ADVERTISER_ID);
+      console.log(
+        `[CJ DEBUG] probe "${term}" → ${results.length} products total, ${tfl.length} from Tech For Less`
+      );
+      tfl.slice(0, 3).forEach((p, i) => {
+        console.log(
+          `[CJ DEBUG]   TFL[${i}] "${p.title}" | price=${p.price?.amount} ` +
+            `sale=${p.salePrice?.amount} avail=${p.availability}`
+        );
+      });
+    } catch (e) {
+      console.error(`[CJ DEBUG] probe "${term}" failed: ${e.message}`);
+    }
+  }
+  console.log('[CJ DEBUG] ===== end Tech For Less broad probe =====');
+}
+
+export async function fetchCJOffers(gpu) {
+  const { token, companyId, advertiserIds } = config.cj;
+  if (!token || !companyId) return [];
+
+  // TEMP DEBUG: one-time broad probe to diagnose empty Tech For Less results.
+  if (DEBUG && !probeDone) {
+    probeDone = true;
+    await debugBroadProbe({ token, companyId });
+  }
+
+  const results = await runCJQuery({
+    token,
+    companyId,
+    keywords: gpu.keywords.slice(0, 3),
+    advertiserIds,
+    label: `gpu:${gpu.id}`,
+  });
+
   // Keep only the cheapest offer per retailer.
   const cheapestByRetailer = new Map();
 
@@ -107,7 +213,13 @@ export async function fetchCJOffers(gpu) {
     }
   }
 
-  for (const offer of cheapestByRetailer.values()) offers.push(offer);
+  const offers = [...cheapestByRetailer.values()];
+  if (DEBUG) {
+    console.log(
+      `[CJ DEBUG] (gpu:${gpu.id}) mapped ${offers.length} offer(s): ` +
+        `${offers.map((o) => `${o.retailer}=$${o.price}`).join(', ') || '(none)'}`
+    );
+  }
   return offers;
 }
 
@@ -120,12 +232,4 @@ function num(v) {
   if (v == null) return null;
   const n = typeof v === 'number' ? v : parseFloat(v);
   return Number.isFinite(n) ? n : null;
-}
-
-async function safeText(res) {
-  try {
-    return (await res.text()).slice(0, 200);
-  } catch {
-    return '<no body>';
-  }
 }
