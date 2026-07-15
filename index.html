@@ -867,28 +867,48 @@
   </footer>
 
   <script>
-    // Simple waitlist form handler
-    // Replace with your actual form endpoint (Formspree, Supabase, etc.)
-    document.getElementById('waitlist-form').addEventListener('submit', function(e) {
+    // Waitlist form → GPUSniff backend (Supabase-backed).
+    const WAITLIST_ENDPOINT = 'https://api.gpusniff.com/api/waitlist';
+    document.getElementById('waitlist-form').addEventListener('submit', async function(e) {
       e.preventDefault();
-      const email = document.getElementById('email-input').value;
+      const emailInput = document.getElementById('email-input');
+      const email = emailInput.value.trim();
       const btn = this.querySelector('button');
       const originalText = btn.textContent;
-      
-      // For now, store in localStorage and show confirmation
-      // TODO: Replace with real backend endpoint
-      const waitlist = JSON.parse(localStorage.getItem('gpusniff_waitlist') || '[]');
-      waitlist.push({ email, date: new Date().toISOString() });
-      localStorage.setItem('gpusniff_waitlist', JSON.stringify(waitlist));
-      
-      btn.textContent = '✓ You\'re on the list!';
-      btn.style.background = '#2ea043';
-      document.getElementById('email-input').value = '';
-      
-      setTimeout(() => {
-        btn.textContent = originalText;
-        btn.style.background = '';
-      }, 3000);
+
+      btn.disabled = true;
+      btn.textContent = 'Joining…';
+
+      try {
+        const res = await fetch(WAITLIST_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, source: 'landing' }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.ok === false) {
+          throw new Error(data.error || 'Something went wrong. Please try again.');
+        }
+
+        btn.textContent = "✓ You're on the list!";
+        btn.style.background = '#2ea043';
+        emailInput.value = '';
+      } catch (err) {
+        // Keep a local record so a backend hiccup never loses a signup.
+        try {
+          const waitlist = JSON.parse(localStorage.getItem('gpusniff_waitlist') || '[]');
+          waitlist.push({ email, date: new Date().toISOString(), synced: false });
+          localStorage.setItem('gpusniff_waitlist', JSON.stringify(waitlist));
+        } catch (_) {}
+        btn.textContent = '⚠ ' + (err.message || 'Try again');
+        btn.style.background = '#b3261e';
+      } finally {
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.style.background = '';
+          btn.disabled = false;
+        }, 3000);
+      }
     });
 
     // Smooth scroll for anchor links
