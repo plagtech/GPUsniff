@@ -24,12 +24,13 @@ const CONFIG = {
   //
   // Backend URL. Override for local dev by setting `gpusniff_backend_url`
   // in chrome.storage.local (see resolveBackendUrl below).
-  backendUrl: 'https://api.gpusniff.com',
-  // Live data on: the extension fetches from the backend and transparently
-  // falls back to on-device mock data if the backend is unreachable.
+  backendUrl: 'https://gpusniff-production.up.railway.app',
+  // Live data on: the extension fetches real prices from the backend.
   useLiveData: true,
-  // How long (ms) to wait on a backend request before falling back to mock.
-  requestTimeoutMs: 6000,
+  // How long (ms) to wait on a backend request before giving up. Must exceed
+  // the backend's worst-case provider timeout (~10s for CJ) so a cold, real
+  // response isn't aborted before it arrives.
+  requestTimeoutMs: 13000,
 };
 
 // ============================================================

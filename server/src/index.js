@@ -3,7 +3,7 @@ import cors from 'cors';
 import { config, hasAnyProvider } from './config.js';
 import { supabaseReady } from './supabase.js';
 import { pricesRouter } from './routes/prices.js';
-import { dealsRouter } from './routes/deals.js';
+import { dealsRouter, buildDeals } from './routes/deals.js';
 import { searchRouter } from './routes/search.js';
 import { historyRouter } from './routes/history.js';
 import { waitlistRouter } from './routes/waitlist.js';
@@ -66,6 +66,14 @@ app.use((err, _req, res, _next) => {
 app.listen(config.port, () => {
   console.log(`[GPUSniff] API listening on :${config.port}`);
   console.log(`[GPUSniff] live providers: ${hasAnyProvider() ? 'yes' : 'none (mock only)'}`);
+
+  // Warm the deals cache in the background so the first popup open is an
+  // instant cache hit instead of waiting on a cold provider fan-out.
+  if (hasAnyProvider()) {
+    buildDeals()
+      .then((deals) => console.log(`[GPUSniff] deals cache warmed: ${deals.length} deal(s)`))
+      .catch((err) => console.error('[GPUSniff] deals warmup failed:', err.message));
+  }
 });
 
 export { app };

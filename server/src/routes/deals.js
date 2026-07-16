@@ -1,48 +1,66 @@
 import { Router } from 'express';
 import { cache } from '../cache.js';
-import { config } from '../config.js';
 import { getPrices } from '../aggregator.js';
 import { getGpuById } from '../gpuDatabase.js';
 
 export const dealsRouter = Router();
 
-// Cards we surface on the Trending Deals tab. Kept small so building the
+// Popular cards surfaced on the Trending Deals tab. Small so building the
 // list only fans out a handful of (cached) price lookups.
-const FEATURED = ['rtx-5070', 'rx-9070-xt', 'rtx-5080', 'rtx-4060-ti', 'arc-b580', 'rx-7800-xt'];
+const FEATURED = ['rtx-5090', 'rtx-5080', 'rtx-5070-ti', 'rtx-5070', 'rtx-5060-ti', 'rx-9070-xt'];
 
-// GET /api/deals — best current offer per featured GPU, with a badge.
+const DEALS_CACHE_KEY = 'deals';
+// Cache deals server-side for 30 min so the popup doesn't re-fan-out to the
+// affiliate providers (Rakuten/CJ/…) on every open.
+const DEALS_TTL_SECONDS = 30 * 60;
+
+/**
+ * Build the trending-deals list: for each featured GPU, take the cheapest
+ * in-stock offer and keep it only if it represents real savings (a sale
+ * price below its original, or a price below MSRP). Cached for 30 min.
+ */
+export async function buildDeals() {
+  const settled = await Promise.allSettled(FEATURED.map((id) => getPrices(id)));
+  const deals = [];
+
+  settled.forEach((result, i) => {
+    if (result.status !== 'fulfilled') return;
+    const gpu = getGpuById(FEATURED[i]);
+    if (!gpu) return;
+
+    // aggregator returns prices sorted cheapest-first, so the first in-stock
+    // entry is the best in-stock price.
+    const best = result.value.prices.find((p) => p.inStock);
+    if (!best) return;
+
+    // Savings = an actual sale discount, else how far below MSRP the price is.
+    const savings =
+      best.savings > 0 ? best.savings : best.price < gpu.msrp ? round2(gpu.msrp - best.price) : 0;
+
+    // Only real deals — skip anything at or above its usual price.
+    if (savings <= 0) return;
+
+    deals.push({
+      gpu: { id: gpu.id, brand: gpu.brand, name: gpu.name, tier: gpu.tier, msrp: gpu.msrp },
+      retailer: best.retailer,
+      price: best.price,
+      originalPrice: best.originalPrice,
+      savings,
+      badge: badgeFor(gpu, best),
+    });
+  });
+
+  // Biggest savings first.
+  deals.sort((a, b) => b.savings - a.savings);
+  cache.set(DEALS_CACHE_KEY, deals, DEALS_TTL_SECONDS);
+  return deals;
+}
+
+// GET /api/deals — cached trending deals (best in-stock price per featured GPU).
 dealsRouter.get('/', async (_req, res, next) => {
   try {
-    const cached = cache.get('deals');
-    if (cached) return res.json(cached);
-
-    const settled = await Promise.allSettled(FEATURED.map((id) => getPrices(id)));
-    const deals = [];
-
-    settled.forEach((result, i) => {
-      if (result.status !== 'fulfilled') return;
-      const gpu = getGpuById(FEATURED[i]);
-      // Only real prices reach here — a GPU with no configured provider
-      // returning data has an empty `prices` array and is skipped, so no
-      // fabricated deal is ever surfaced.
-      const best = result.value.prices.find((p) => p.inStock) || result.value.prices[0];
-      if (!gpu || !best) return;
-      deals.push({
-        gpu: { id: gpu.id, brand: gpu.brand, name: gpu.name, tier: gpu.tier, msrp: gpu.msrp },
-        retailer: best.retailer,
-        price: best.price,
-        originalPrice: best.originalPrice,
-        savings: best.savings || (best.price < gpu.msrp ? round2(gpu.msrp - best.price) : 0),
-        badge: badgeFor(gpu, best),
-      });
-    });
-
-    // Highlight the biggest savings first.
-    deals.sort((a, b) => (b.savings || 0) - (a.savings || 0));
-
-    // Short TTL so deals feel live but we don't rebuild on every popup open.
-    cache.set('deals', deals, Math.min(config.priceCacheTtlSeconds, 300));
-    res.json(deals);
+    const cached = cache.get(DEALS_CACHE_KEY);
+    res.json(cached ?? (await buildDeals()));
   } catch (err) {
     next(err);
   }
@@ -52,7 +70,6 @@ function badgeFor(gpu, best) {
   if (best.originalPrice && best.savings > 0) return 'Price Drop';
   if (best.price < gpu.msrp) return 'Below MSRP';
   if (gpu.tier === 'budget') return 'Budget Pick';
-  if (!best.inStock) return 'Restock Soon';
   return 'In Stock';
 }
 
