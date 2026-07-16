@@ -7,14 +7,11 @@
  * every result maps to the `newegg` retailer.
  *
  * Auth (two-step): the web-services token + security token are exchanged
- * at /token for a short-lived OAuth2 access token, which is then sent as
- * `Authorization: Bearer <access_token>` on the Product Search request.
- * Response is XML.
- *
- * TEMP: the exact /token credential format isn't pinned down yet, so
- * getAccessToken() tries several documented permutations in order and uses
- * the first that returns an access_token (each attempt is logged so we can
- * see the winner in Railway). Once known, collapse to the single format.
+ * at /token — Authorization: Bearer base64(RAKUTEN_TOKEN:RAKUTEN_SECURITY_TOKEN)
+ * (yes, "Bearer" with a base64 blob) and body
+ * grant_type=client_credentials&scope=<RAKUTEN_SID> — for a short-lived
+ * access token, which is then sent as `Authorization: Bearer <access_token>`
+ * on the Product Search request. Response is XML.
  *
  * Affiliate links are (re)built from the account SID as Rakuten deep
  * links so clicks are attributed to us.
@@ -36,17 +33,9 @@ let tokenCache = { value: '', expiresAt: 0 };
 
 export async function fetchRakutenOffers(gpu) {
   const { token, securityToken, sid, neweggMid } = config.rakuten;
-  if (!token || !securityToken || !sid || !neweggMid) {
-    // TEMP DEBUG
-    console.log(
-      '[Rakuten DEBUG] skipped — credentials not configured ' +
-        '(need RAKUTEN_TOKEN, RAKUTEN_SECURITY_TOKEN, RAKUTEN_SID, RAKUTEN_NEWEGG_MID)'
-    );
-    return [];
-  }
+  if (!token || !securityToken || !sid || !neweggMid) return [];
 
-  // Step 1: exchange the web-services + security tokens for a short-lived
-  // OAuth2 access token (HTTP Basic + client_credentials).
+  // Step 1: exchange the web-services + security tokens for an access token.
   let accessToken;
   try {
     accessToken = await getAccessToken(token.trim(), securityToken.trim(), sid.trim());
@@ -61,27 +50,17 @@ export async function fetchRakutenOffers(gpu) {
     mid: neweggMid, // 44583 = Newegg
     max: '20',
   });
-  const requestUrl = `${ENDPOINT}?${params.toString()}`;
-  const headers = {
-    Authorization: `Bearer ${accessToken}`,
-    Accept: 'application/xml',
-  };
 
-  // TEMP DEBUG
-  console.log(`[Rakuten DEBUG] querying keyword: ${gpu.name}, mid: ${neweggMid}`);
-  console.log('[Rakuten DEBUG] Authorization header present:', !!headers.Authorization);
-  console.log(`[Rakuten DEBUG] access token: Bearer ${redact(accessToken)}`);
-  console.log(`[Rakuten DEBUG] request URL: ${requestUrl}`);
-
-  // Hard 10s cap on the whole request (connect + body read) via
-  // AbortController, mirroring the CJ provider.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), RAKUTEN_TIMEOUT_MS);
   let res;
   let rawBody;
   try {
-    res = await fetch(requestUrl, {
-      headers,
+    res = await fetch(`${ENDPOINT}?${params.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/xml',
+      },
       signal: controller.signal,
     });
     rawBody = await res.text();
@@ -94,27 +73,13 @@ export async function fetchRakutenOffers(gpu) {
     clearTimeout(timer);
   }
 
-  // TEMP DEBUG — log status + body BEFORE any error handling so we can
-  // see exactly what Rakuten returns, even on non-200 responses. If
-  // `redirected` is true and the final URL is a different host, a
-  // cross-origin redirect stripped our Authorization header (undici does
-  // this by spec) — that alone explains "access token is missing".
-  console.log(
-    `[Rakuten DEBUG] HTTP status: ${res.status} | final URL: ${redactTokenInUrl(res.url)} | redirected: ${res.redirected}`
-  );
-  console.log(`[Rakuten DEBUG] raw response (first 500 chars): ${rawBody.slice(0, 500)}`);
-
   if (!res.ok) {
     console.error(`[GPUSniff] Rakuten API ${res.status} for ${gpu.id}: ${rawBody.slice(0, 200)}`);
     return [];
   }
 
-  const items = parseItems(rawBody);
-  // TEMP DEBUG
-  console.log(`[Rakuten DEBUG] parsed items count: ${items.length}`);
-
   const offers = [];
-  for (const item of items) {
+  for (const item of parseItems(rawBody)) {
     // Defensive: the `mid` filter should already scope to Newegg, but skip
     // anything that reports a different merchant just in case.
     if (item.mid && String(item.mid) !== String(neweggMid)) continue;
@@ -147,102 +112,52 @@ export async function fetchRakutenOffers(gpu) {
 }
 
 // ── OAuth2 token exchange ───────────────────────────────────────────────
-const b64 = (s) => Buffer.from(s).toString('base64');
+// Rakuten's /token wants "Authorization: Bearer <base64(token:securityToken)>"
+// and scope = the site id. Cached until shortly before it expires.
+async function getAccessToken(webServicesToken, securityToken, sid) {
+  if (tokenCache.value && Date.now() < tokenCache.expiresAt) {
+    return tokenCache.value;
+  }
 
-// TEMP: candidate /token credential formats, tried in order until one
-// returns an access_token. `t` = web-services token, `s` = security token,
-// `sid` = site id. The base64 credential values are NOT logged (only the
-// label describing the format), so no secret leaks.
-function tokenPermutations(t, s, sid) {
-  return [
-    // Rakuten docs: "Bearer <base64(clientId:clientSecret)>", scope = SID.
-    { label: '1. bearer-b64(token:security) scope=SID', header: `Bearer ${b64(`${t}:${s}`)}`, body: { grant_type: 'client_credentials', scope: sid } },
-    { label: '2. bearer-b64(security:token) scope=SID', header: `Bearer ${b64(`${s}:${t}`)}`, body: { grant_type: 'client_credentials', scope: sid } },
-    // Swapped Basic order, scope=Production.
-    { label: '3. basic(security:token) scope=Production', header: `Basic ${b64(`${s}:${t}`)}`, body: { grant_type: 'client_credentials', scope: 'Production' } },
-    // Basic, no scope.
-    { label: '4. basic(token:security) no-scope', header: `Basic ${b64(`${t}:${s}`)}`, body: { grant_type: 'client_credentials' } },
-    // Basic, scope=SID.
-    { label: '5. basic(token:security) scope=SID', header: `Basic ${b64(`${t}:${s}`)}`, body: { grant_type: 'client_credentials', scope: sid } },
-    // Credentials in the POST body, no auth header.
-    { label: '6. body-creds client_id/client_secret (no header)', header: null, body: { grant_type: 'client_credentials', client_id: t, client_secret: s } },
-    // Some Rakuten accounts hand you a PRE-ENCODED base64 credential — use
-    // the token value directly after Bearer/Basic (don't re-encode it).
-    { label: '7. bearer RAKUTEN_TOKEN raw (pre-encoded) scope=SID', header: `Bearer ${t}`, body: { grant_type: 'client_credentials', scope: sid } },
-    { label: '8. bearer RAKUTEN_SECURITY_TOKEN raw (pre-encoded) scope=SID', header: `Bearer ${s}`, body: { grant_type: 'client_credentials', scope: sid } },
-    { label: '9. basic RAKUTEN_TOKEN raw (pre-encoded) scope=SID', header: `Basic ${t}`, body: { grant_type: 'client_credentials', scope: sid } },
-  ];
-}
+  const credentials = Buffer.from(`${webServicesToken}:${securityToken}`).toString('base64');
+  const body = new URLSearchParams({ grant_type: 'client_credentials', scope: sid });
 
-// POST one permutation to /token; returns { status, raw }. 10s timeout.
-async function postToken(perm) {
-  const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
-  if (perm.header) headers.Authorization = perm.header;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), RAKUTEN_TIMEOUT_MS);
+  let res;
+  let raw;
   try {
-    const res = await fetch(TOKEN_ENDPOINT, {
+    res = await fetch(TOKEN_ENDPOINT, {
       method: 'POST',
-      headers,
-      body: new URLSearchParams(perm.body),
+      headers: {
+        Authorization: `Bearer ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body,
       signal: controller.signal,
     });
-    return { status: res.status, raw: await res.text() };
+    raw = await res.text();
   } catch (err) {
-    if (err.name === 'AbortError') throw new Error(`timeout after ${RAKUTEN_TIMEOUT_MS / 1000}s`);
+    if (err.name === 'AbortError') throw new Error(`token endpoint timeout after ${RAKUTEN_TIMEOUT_MS / 1000}s`);
     throw err;
   } finally {
     clearTimeout(timer);
   }
-}
 
-// Try each permutation in order; cache + return the first access token.
-async function getAccessToken(webServicesToken, securityToken, sid) {
-  if (tokenCache.value && Date.now() < tokenCache.expiresAt) {
-    console.log('[Rakuten DEBUG] using cached access token'); // TEMP DEBUG
-    return tokenCache.value;
+  if (!res.ok) throw new Error(`token endpoint ${res.status}: ${raw.slice(0, 200)}`);
+
+  let json;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    throw new Error('token endpoint returned non-JSON');
   }
+  if (!json.access_token) throw new Error('no access_token in token response');
 
-  let lastError = 'none';
-  for (const perm of tokenPermutations(webServicesToken, securityToken, sid)) {
-    console.log(`[Rakuten DEBUG] trying token exchange permutation: ${perm.label}`); // TEMP DEBUG
-    let status;
-    let raw;
-    try {
-      ({ status, raw } = await postToken(perm));
-    } catch (err) {
-      lastError = `${perm.label} → ${err.message}`;
-      console.log(`[Rakuten DEBUG] permutation "${perm.label}" threw: ${err.message}`); // TEMP DEBUG
-      continue;
-    }
-
-    console.log(`[Rakuten DEBUG] permutation "${perm.label}" → HTTP ${status}`); // TEMP DEBUG
-    if (status < 200 || status >= 300) {
-      // Error bodies carry the reason (e.g. invalid_client), not a secret.
-      console.log(`[Rakuten DEBUG] permutation "${perm.label}" error body: ${raw.slice(0, 200)}`); // TEMP DEBUG
-      lastError = `${perm.label} → ${status}: ${raw.slice(0, 120)}`;
-      continue;
-    }
-
-    let json;
-    try {
-      json = JSON.parse(raw);
-    } catch {
-      lastError = `${perm.label} → 2xx non-JSON`;
-      continue;
-    }
-    if (!json.access_token) {
-      lastError = `${perm.label} → 2xx but no access_token`;
-      continue;
-    }
-
-    const ttl = Number(json.expires_in) || 3600;
-    tokenCache = { value: json.access_token, expiresAt: Date.now() + (ttl - 60) * 1000 };
-    console.log(`[Rakuten DEBUG] ✓ token exchange SUCCEEDED via "${perm.label}" (expires_in ${ttl})`); // TEMP DEBUG
-    return json.access_token;
-  }
-
-  throw new Error(`all token-exchange permutations failed; last: ${lastError}`);
+  const ttl = Number(json.expires_in) || 3600;
+  // Refresh a minute early.
+  tokenCache = { value: json.access_token, expiresAt: Date.now() + (ttl - 60) * 1000 };
+  return json.access_token;
 }
 
 // ── Affiliate links ─────────────────────────────────────────────────────
@@ -315,16 +230,4 @@ function num(v) {
   if (v == null) return null;
   const n = parseFloat(String(v).replace(/[^0-9.]/g, ''));
   return Number.isFinite(n) ? n : null;
-}
-
-// TEMP DEBUG helper — show only the first/last few chars of a secret.
-function redact(t) {
-  if (!t) return '(empty)';
-  if (t.length <= 8) return '****';
-  return `${t.slice(0, 4)}…${t.slice(-4)}`;
-}
-
-// TEMP DEBUG helper — mask the token value inside a request URL for logs.
-function redactTokenInUrl(url) {
-  return url.replace(/([?&]token=)[^&]*/i, '$1***');
 }
