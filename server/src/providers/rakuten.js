@@ -6,8 +6,9 @@
  * affiliate product feed. The request is filtered to that merchant, so
  * every result maps to the `newegg` retailer.
  *
- * Auth: the web-services token (RAKUTEN_TOKEN) is passed directly as the
- * `token` query parameter on the Product Search request. Response is XML.
+ * Auth: the web-services token (RAKUTEN_TOKEN) is sent directly as
+ * `Authorization: Bearer <token>` on the Product Search request.
+ * Response is XML.
  *
  * Affiliate links are (re)built from the account SID as Rakuten deep
  * links so clicks are attributed to us.
@@ -34,21 +35,24 @@ export async function fetchRakutenOffers(gpu) {
     return [];
   }
 
-  // Product Search 1.0 authenticates via the `token` query parameter.
+  // Product Search authenticates via the Authorization Bearer header.
   const cleanToken = token.trim();
   const params = new URLSearchParams({
-    token: cleanToken,
     keyword: gpu.name, // e.g. "RTX 5070", "RX 9070 XT"
     mid: neweggMid, // 44583 = Newegg
     max: '20',
   });
   const requestUrl = `${ENDPOINT}?${params.toString()}`;
-  const headers = { Accept: 'application/xml' };
+  const headers = {
+    Authorization: `Bearer ${cleanToken}`,
+    Accept: 'application/xml',
+  };
 
-  // TEMP DEBUG (token redacted so it never lands in the logs)
+  // TEMP DEBUG
   console.log(`[Rakuten DEBUG] querying keyword: ${gpu.name}, mid: ${neweggMid}`);
-  console.log(`[Rakuten DEBUG] token length: ${cleanToken.length}, token param: ${redact(cleanToken)}`);
-  console.log(`[Rakuten DEBUG] request URL: ${redactTokenInUrl(requestUrl)}`);
+  console.log('[Rakuten DEBUG] Authorization header present:', !!headers.Authorization);
+  console.log(`[Rakuten DEBUG] token length: ${cleanToken.length}, sent as: Bearer ${redact(cleanToken)}`);
+  console.log(`[Rakuten DEBUG] request URL: ${requestUrl}`);
 
   // Hard 10s cap on the whole request (connect + body read) via
   // AbortController, mirroring the CJ provider.
