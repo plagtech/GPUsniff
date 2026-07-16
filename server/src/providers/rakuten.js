@@ -6,7 +6,7 @@
  * affiliate product feed. The request is filtered to that merchant, so
  * every result maps to the `newegg` retailer.
  *
- * Auth: the account token is passed as the `token` query parameter.
+ * Auth: the account token is sent as `Authorization: Bearer <token>`.
  * Response is XML.
  *
  * Affiliate links are (re)built from the account SID as Rakuten deep
@@ -35,7 +35,6 @@ export async function fetchRakutenOffers(gpu) {
   }
 
   const params = new URLSearchParams({
-    token,
     keyword: gpu.name, // e.g. "RTX 5070", "RX 9070 XT"
     mid: neweggMid, // 44583 = Newegg
     max: '20',
@@ -52,7 +51,10 @@ export async function fetchRakutenOffers(gpu) {
   let rawBody;
   try {
     res = await fetch(`${ENDPOINT}?${params.toString()}`, {
-      headers: { Accept: 'application/xml' },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/xml',
+      },
       signal: controller.signal,
     });
     rawBody = await res.text();
