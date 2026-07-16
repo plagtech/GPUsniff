@@ -6,37 +6,52 @@
  * affiliate product feed. The request is filtered to that merchant, so
  * every result maps to the `newegg` retailer.
  *
- * Auth: the web-services token (RAKUTEN_TOKEN) is sent directly as
- * `Authorization: Bearer <token>` on the Product Search request.
+ * Auth (two-step): the web-services token + security token are exchanged
+ * at /token (HTTP Basic auth + grant_type=client_credentials, scope=
+ * Production) for a short-lived OAuth2 access token, which is then sent as
+ * `Authorization: Bearer <access_token>` on the Product Search request.
  * Response is XML.
  *
  * Affiliate links are (re)built from the account SID as Rakuten deep
  * links so clicks are attributed to us.
  *
- * No-op ([]) unless RAKUTEN_TOKEN + RAKUTEN_SID + RAKUTEN_NEWEGG_MID
- * are all set.
+ * No-op ([]) unless RAKUTEN_TOKEN + RAKUTEN_SECURITY_TOKEN + RAKUTEN_SID
+ * + RAKUTEN_NEWEGG_MID are all set.
  */
 import { config } from '../config.js';
 
 const ENDPOINT = 'https://api.linksynergy.com/productsearch/1.0';
+const TOKEN_ENDPOINT = 'https://api.linksynergy.com/token';
 const DEEPLINK_BASE = 'https://click.linksynergy.com/deeplink';
 // Abort any Rakuten request that hasn't completed within this window so a
 // slow/unresponsive endpoint can never hang the server.
 const RAKUTEN_TIMEOUT_MS = 10_000;
 
+// Cached OAuth2 access token minted from the web-services + security tokens.
+let tokenCache = { value: '', expiresAt: 0 };
+
 export async function fetchRakutenOffers(gpu) {
-  const { token, sid, neweggMid } = config.rakuten;
-  if (!token || !sid || !neweggMid) {
+  const { token, securityToken, sid, neweggMid } = config.rakuten;
+  if (!token || !securityToken || !sid || !neweggMid) {
     // TEMP DEBUG
     console.log(
       '[Rakuten DEBUG] skipped — credentials not configured ' +
-        '(need RAKUTEN_TOKEN, RAKUTEN_SID, RAKUTEN_NEWEGG_MID)'
+        '(need RAKUTEN_TOKEN, RAKUTEN_SECURITY_TOKEN, RAKUTEN_SID, RAKUTEN_NEWEGG_MID)'
     );
     return [];
   }
 
-  // Product Search authenticates via the Authorization Bearer header.
-  const cleanToken = token.trim();
+  // Step 1: exchange the web-services + security tokens for a short-lived
+  // OAuth2 access token (HTTP Basic + client_credentials).
+  let accessToken;
+  try {
+    accessToken = await getAccessToken(token.trim(), securityToken.trim());
+  } catch (err) {
+    console.error(`[GPUSniff] Rakuten token exchange failed for ${gpu.id}: ${err.message}`);
+    return [];
+  }
+
+  // Step 2: query Product Search with the access token as Bearer.
   const params = new URLSearchParams({
     keyword: gpu.name, // e.g. "RTX 5070", "RX 9070 XT"
     mid: neweggMid, // 44583 = Newegg
@@ -44,14 +59,14 @@ export async function fetchRakutenOffers(gpu) {
   });
   const requestUrl = `${ENDPOINT}?${params.toString()}`;
   const headers = {
-    Authorization: `Bearer ${cleanToken}`,
+    Authorization: `Bearer ${accessToken}`,
     Accept: 'application/xml',
   };
 
   // TEMP DEBUG
   console.log(`[Rakuten DEBUG] querying keyword: ${gpu.name}, mid: ${neweggMid}`);
   console.log('[Rakuten DEBUG] Authorization header present:', !!headers.Authorization);
-  console.log(`[Rakuten DEBUG] token length: ${cleanToken.length}, sent as: Bearer ${redact(cleanToken)}`);
+  console.log(`[Rakuten DEBUG] access token: Bearer ${redact(accessToken)}`);
   console.log(`[Rakuten DEBUG] request URL: ${requestUrl}`);
 
   // Hard 10s cap on the whole request (connect + body read) via
@@ -125,6 +140,69 @@ export async function fetchRakutenOffers(gpu) {
   // cheapest per retailer anyway, but this keeps the payload tight).
   offers.sort((a, b) => a.price - b.price);
   return [offers[0]];
+}
+
+// ── OAuth2 token exchange ───────────────────────────────────────────────
+// Exchange the web-services token (client id) + security token (client
+// secret) for a short-lived access token via HTTP Basic + the
+// client_credentials grant. Cached until shortly before it expires.
+async function getAccessToken(webServicesToken, securityToken) {
+  if (tokenCache.value && Date.now() < tokenCache.expiresAt) {
+    console.log('[Rakuten DEBUG] using cached access token'); // TEMP DEBUG
+    return tokenCache.value;
+  }
+
+  const basic = Buffer.from(`${webServicesToken}:${securityToken}`).toString('base64');
+  const body = new URLSearchParams({ grant_type: 'client_credentials', scope: 'Production' });
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), RAKUTEN_TIMEOUT_MS);
+  let res;
+  let raw;
+  try {
+    res = await fetch(TOKEN_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${basic}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body,
+      signal: controller.signal,
+    });
+    raw = await res.text();
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error(`token endpoint timeout after ${RAKUTEN_TIMEOUT_MS / 1000}s`);
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+
+  // TEMP DEBUG — status always; full body only on error (error bodies carry
+  // no secret; a success body would leak the access token).
+  console.log(`[Rakuten DEBUG] token exchange HTTP status: ${res.status}`);
+  if (!res.ok) {
+    console.log(`[Rakuten DEBUG] token exchange error body: ${raw.slice(0, 300)}`);
+    throw new Error(`token endpoint ${res.status}: ${raw.slice(0, 200)}`);
+  }
+
+  let json;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    throw new Error('token endpoint returned non-JSON');
+  }
+
+  const accessToken = json.access_token;
+  console.log(
+    `[Rakuten DEBUG] token exchange OK — access_token present: ${!!accessToken}, ` +
+      `expires_in: ${json.expires_in}` // TEMP DEBUG
+  );
+  if (!accessToken) throw new Error('no access_token in token response');
+
+  const ttl = Number(json.expires_in) || 3600;
+  // Refresh a minute early.
+  tokenCache = { value: accessToken, expiresAt: Date.now() + (ttl - 60) * 1000 };
+  return accessToken;
 }
 
 // ── Affiliate links ─────────────────────────────────────────────────────

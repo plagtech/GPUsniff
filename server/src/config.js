@@ -44,6 +44,7 @@ export const config = {
   },
   rakuten: {
     token: process.env.RAKUTEN_TOKEN || '',
+    securityToken: process.env.RAKUTEN_SECURITY_TOKEN || '',
     sid: process.env.RAKUTEN_SID || '',
     neweggMid: process.env.RAKUTEN_NEWEGG_MID || '',
   },
@@ -65,7 +66,12 @@ export const providerStatus = {
     Boolean(config.ebay.token || (config.ebay.clientId && config.ebay.clientSecret)),
   walmart: () => Boolean(config.impact.accountSid && config.impact.authToken),
   rakuten: () =>
-    Boolean(config.rakuten.token && config.rakuten.sid && config.rakuten.neweggMid),
+    Boolean(
+      config.rakuten.token &&
+        config.rakuten.securityToken &&
+        config.rakuten.sid &&
+        config.rakuten.neweggMid
+    ),
 };
 
 /** True when at least one real affiliate provider is configured. */
