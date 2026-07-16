@@ -25,7 +25,14 @@ const RAKUTEN_TIMEOUT_MS = 10_000;
 
 export async function fetchRakutenOffers(gpu) {
   const { token, sid, neweggMid } = config.rakuten;
-  if (!token || !sid || !neweggMid) return [];
+  if (!token || !sid || !neweggMid) {
+    // TEMP DEBUG
+    console.log(
+      '[Rakuten DEBUG] skipped — credentials not configured ' +
+        '(need RAKUTEN_TOKEN, RAKUTEN_SID, RAKUTEN_NEWEGG_MID)'
+    );
+    return [];
+  }
 
   const params = new URLSearchParams({
     token,
@@ -33,6 +40,9 @@ export async function fetchRakutenOffers(gpu) {
     mid: neweggMid, // 44583 = Newegg
     max: '20',
   });
+
+  // TEMP DEBUG
+  console.log(`[Rakuten DEBUG] querying keyword: ${gpu.name}, mid: ${neweggMid}`);
 
   // Hard 10s cap on the whole request (connect + body read) via
   // AbortController, mirroring the CJ provider.
@@ -55,13 +65,22 @@ export async function fetchRakutenOffers(gpu) {
     clearTimeout(timer);
   }
 
+  // TEMP DEBUG — log status + body BEFORE any error handling so we can
+  // see exactly what Rakuten returns, even on non-200 responses.
+  console.log(`[Rakuten DEBUG] HTTP status: ${res.status}`);
+  console.log(`[Rakuten DEBUG] raw response (first 500 chars): ${rawBody.slice(0, 500)}`);
+
   if (!res.ok) {
     console.error(`[GPUSniff] Rakuten API ${res.status} for ${gpu.id}: ${rawBody.slice(0, 200)}`);
     return [];
   }
 
+  const items = parseItems(rawBody);
+  // TEMP DEBUG
+  console.log(`[Rakuten DEBUG] parsed items count: ${items.length}`);
+
   const offers = [];
-  for (const item of parseItems(rawBody)) {
+  for (const item of items) {
     // Defensive: the `mid` filter should already scope to Newegg, but skip
     // anything that reports a different merchant just in case.
     if (item.mid && String(item.mid) !== String(neweggMid)) continue;
