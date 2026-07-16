@@ -39,9 +39,21 @@ export async function fetchRakutenOffers(gpu) {
     mid: neweggMid, // 44583 = Newegg
     max: '20',
   });
+  const requestUrl = `${ENDPOINT}?${params.toString()}`;
+
+  // Trim: the env var can pick up a stray trailing newline/space when it's
+  // pasted into a dashboard, which corrupts the Authorization header.
+  const cleanToken = token.trim();
+  const headers = {
+    Authorization: `Bearer ${cleanToken}`,
+    Accept: 'application/xml',
+  };
 
   // TEMP DEBUG
   console.log(`[Rakuten DEBUG] querying keyword: ${gpu.name}, mid: ${neweggMid}`);
+  console.log('[Rakuten DEBUG] Authorization header present:', !!headers.Authorization);
+  console.log(`[Rakuten DEBUG] token length: ${cleanToken.length}, sent as: Bearer ${redact(cleanToken)}`);
+  console.log(`[Rakuten DEBUG] request URL: ${requestUrl}`);
 
   // Hard 10s cap on the whole request (connect + body read) via
   // AbortController, mirroring the CJ provider.
@@ -50,11 +62,8 @@ export async function fetchRakutenOffers(gpu) {
   let res;
   let rawBody;
   try {
-    res = await fetch(`${ENDPOINT}?${params.toString()}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/xml',
-      },
+    res = await fetch(requestUrl, {
+      headers,
       signal: controller.signal,
     });
     rawBody = await res.text();
@@ -68,8 +77,13 @@ export async function fetchRakutenOffers(gpu) {
   }
 
   // TEMP DEBUG — log status + body BEFORE any error handling so we can
-  // see exactly what Rakuten returns, even on non-200 responses.
-  console.log(`[Rakuten DEBUG] HTTP status: ${res.status}`);
+  // see exactly what Rakuten returns, even on non-200 responses. If
+  // `redirected` is true and the final URL is a different host, a
+  // cross-origin redirect stripped our Authorization header (undici does
+  // this by spec) — that alone explains "access token is missing".
+  console.log(
+    `[Rakuten DEBUG] HTTP status: ${res.status} | final URL: ${res.url} | redirected: ${res.redirected}`
+  );
   console.log(`[Rakuten DEBUG] raw response (first 500 chars): ${rawBody.slice(0, 500)}`);
 
   if (!res.ok) {
@@ -184,4 +198,11 @@ function num(v) {
   if (v == null) return null;
   const n = parseFloat(String(v).replace(/[^0-9.]/g, ''));
   return Number.isFinite(n) ? n : null;
+}
+
+// TEMP DEBUG helper — show only the first/last few chars of a secret.
+function redact(t) {
+  if (!t) return '(empty)';
+  if (t.length <= 8) return '****';
+  return `${t.slice(0, 4)}…${t.slice(-4)}`;
 }
