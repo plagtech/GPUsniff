@@ -6,7 +6,10 @@
  * affiliate product feed. The request is filtered to that merchant, so
  * every result maps to the `newegg` retailer.
  *
- * Auth: the account token is sent as `Authorization: Bearer <token>`.
+ * Auth (two-step): the web-services token (RAKUTEN_TOKEN) is first
+ * exchanged at the /token endpoint for a short-lived OAuth2 access token
+ * (scope = RAKUTEN_SID). That access token is then sent as
+ * `Authorization: Bearer <access_token>` on the Product Search request.
  * Response is XML.
  *
  * Affiliate links are (re)built from the account SID as Rakuten deep
@@ -18,10 +21,14 @@
 import { config } from '../config.js';
 
 const ENDPOINT = 'https://api.linksynergy.com/productsearch/1.0';
+const TOKEN_ENDPOINT = 'https://api.linksynergy.com/token';
 const DEEPLINK_BASE = 'https://click.linksynergy.com/deeplink';
 // Abort any Rakuten request that hasn't completed within this window so a
 // slow/unresponsive endpoint can never hang the server.
 const RAKUTEN_TIMEOUT_MS = 10_000;
+
+// Cached OAuth2 access token minted from the web-services token.
+let tokenCache = { value: '', expiresAt: 0 };
 
 export async function fetchRakutenOffers(gpu) {
   const { token, sid, neweggMid } = config.rakuten;
@@ -34,25 +41,32 @@ export async function fetchRakutenOffers(gpu) {
     return [];
   }
 
+  // Step 1: exchange the web-services token for a short-lived OAuth2
+  // access token (Product Search sits behind Rakuten's OAuth gateway).
+  let accessToken;
+  try {
+    accessToken = await getAccessToken(token.trim(), sid.trim());
+  } catch (err) {
+    console.error(`[GPUSniff] Rakuten token exchange failed for ${gpu.id}: ${err.message}`);
+    return [];
+  }
+
+  // Step 2: query Product Search with the access token.
   const params = new URLSearchParams({
     keyword: gpu.name, // e.g. "RTX 5070", "RX 9070 XT"
     mid: neweggMid, // 44583 = Newegg
     max: '20',
   });
   const requestUrl = `${ENDPOINT}?${params.toString()}`;
-
-  // Trim: the env var can pick up a stray trailing newline/space when it's
-  // pasted into a dashboard, which corrupts the Authorization header.
-  const cleanToken = token.trim();
   const headers = {
-    Authorization: `Bearer ${cleanToken}`,
+    Authorization: `Bearer ${accessToken}`,
     Accept: 'application/xml',
   };
 
   // TEMP DEBUG
   console.log(`[Rakuten DEBUG] querying keyword: ${gpu.name}, mid: ${neweggMid}`);
   console.log('[Rakuten DEBUG] Authorization header present:', !!headers.Authorization);
-  console.log(`[Rakuten DEBUG] token length: ${cleanToken.length}, sent as: Bearer ${redact(cleanToken)}`);
+  console.log(`[Rakuten DEBUG] access token: Bearer ${redact(accessToken)}`);
   console.log(`[Rakuten DEBUG] request URL: ${requestUrl}`);
 
   // Hard 10s cap on the whole request (connect + body read) via
@@ -126,6 +140,64 @@ export async function fetchRakutenOffers(gpu) {
   // cheapest per retailer anyway, but this keeps the payload tight).
   offers.sort((a, b) => a.price - b.price);
   return [offers[0]];
+}
+
+// ── OAuth2 token exchange ───────────────────────────────────────────────
+// Exchange the long-lived web-services token for a short-lived access
+// token, cached until shortly before it expires. Rakuten's token endpoint
+// wants the web-services token as the Bearer credential and the SID as the
+// scope, using the client_credentials grant.
+async function getAccessToken(webServicesToken, sid) {
+  if (tokenCache.value && Date.now() < tokenCache.expiresAt) {
+    console.log('[Rakuten DEBUG] using cached access token'); // TEMP DEBUG
+    return tokenCache.value;
+  }
+
+  const body = new URLSearchParams({ scope: sid, grant_type: 'client_credentials' });
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), RAKUTEN_TIMEOUT_MS);
+  let res;
+  let raw;
+  try {
+    res = await fetch(TOKEN_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${webServicesToken}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body,
+      signal: controller.signal,
+    });
+    raw = await res.text();
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error(`token endpoint timeout after ${RAKUTEN_TIMEOUT_MS / 1000}s`);
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+
+  // TEMP DEBUG
+  console.log(`[Rakuten DEBUG] token exchange HTTP status: ${res.status}`);
+  console.log(`[Rakuten DEBUG] token exchange response (first 300 chars): ${raw.slice(0, 300)}`);
+
+  if (!res.ok) throw new Error(`token endpoint ${res.status}: ${raw.slice(0, 200)}`);
+
+  let json;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    throw new Error('token endpoint returned non-JSON');
+  }
+
+  const accessToken = json.access_token;
+  if (!accessToken) throw new Error(`no access_token in response: ${raw.slice(0, 120)}`);
+
+  const ttl = Number(json.expires_in) || 3600;
+  // Refresh a minute early.
+  tokenCache = { value: accessToken, expiresAt: Date.now() + (ttl - 60) * 1000 };
+  console.log(`[Rakuten DEBUG] obtained access token (expires in ${ttl}s): Bearer ${redact(accessToken)}`); // TEMP DEBUG
+  return accessToken;
 }
 
 // ── Affiliate links ─────────────────────────────────────────────────────
