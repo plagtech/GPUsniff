@@ -87,24 +87,25 @@ export async function fetchEbayOffers(gpu) {
   const items = Array.isArray(data.itemSummaries) ? data.itemSummaries : [];
   if (!items.length) return [];
 
-  const item = items[0]; // cheapest, since we sorted by price
-  const price = num(item.price?.value);
-  if (price == null) return [];
-
-  const shippingCost = item.shippingOptions?.[0]?.shippingCost;
-
-  return [
-    {
-      retailer: 'ebay',
-      price,
-      originalPrice: num(item.marketingPrice?.originalPrice?.value),
-      inStock: true, // Browse only returns buyable listings
-      // itemAffiliateWebUrl is present when a campaign id is configured.
-      url: item.itemAffiliateWebUrl || item.itemWebUrl,
-      shipping: formatShipping(shippingCost),
-      source: 'ebay-browse',
-    },
-  ];
+  // Return all candidates; the aggregator sanity-filters and keeps the
+  // cheapest plausible card per retailer.
+  return items
+    .map((item) => {
+      const price = num(item.price?.value);
+      if (price == null) return null;
+      return {
+        retailer: 'ebay',
+        price,
+        title: item.title || null,
+        originalPrice: num(item.marketingPrice?.originalPrice?.value),
+        inStock: true, // Browse only returns buyable listings
+        // itemAffiliateWebUrl is present when a campaign id is configured.
+        url: item.itemAffiliateWebUrl || item.itemWebUrl,
+        shipping: formatShipping(item.shippingOptions?.[0]?.shippingCost),
+        source: 'ebay-browse',
+      };
+    })
+    .filter(Boolean);
 }
 
 function formatShipping(cost) {

@@ -35,10 +35,10 @@ export async function fetchBestBuyOffers(gpu) {
   const products = Array.isArray(data.products) ? data.products : [];
   if (!products.length) return [];
 
-  // Take the cheapest available match.
-  const p = products.find((x) => x.onlineAvailability) || products[0];
-  return [
-    {
+  // Return all candidates; the aggregator sanity-filters and keeps the
+  // cheapest plausible card per retailer.
+  return products
+    .map((p) => ({
       retailer: 'bestbuy',
       price: p.salePrice ?? p.regularPrice,
       originalPrice: p.onSale ? p.regularPrice : null,
@@ -48,8 +48,9 @@ export async function fetchBestBuyOffers(gpu) {
       shipping: null,
       source: 'bestbuy-api',
       sku: String(p.sku),
-    },
-  ];
+      title: p.name || null,
+    }))
+    .filter((o) => o.price != null);
 }
 
 async function safeText(res) {

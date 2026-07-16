@@ -131,9 +131,9 @@ export async function fetchCJOffers(gpu) {
     return [];
   }
 
-  // Keep only the cheapest offer per retailer.
-  const cheapestByRetailer = new Map();
-
+  // Return all mapped candidates; the aggregator sanity-filters out feed
+  // junk and keeps the cheapest plausible card per retailer.
+  const offers = [];
   for (const item of results) {
     const retailer = retailerForAdvertiser(item);
     if (!retailer) continue;
@@ -142,22 +142,19 @@ export async function fetchCJOffers(gpu) {
     const price = sale ?? regular;
     if (price == null) continue;
 
-    const offer = {
+    offers.push({
       retailer,
       price,
+      title: item.title || null,
       originalPrice: sale != null && regular != null && regular > sale ? regular : null,
       inStock: isAvailable(item.availability),
       url: item.linkCode?.clickUrl || item.link,
       shipping: null,
       source: 'cj-graphql',
-    };
-    const current = cheapestByRetailer.get(retailer);
-    if (!current || offer.price < current.price) {
-      cheapestByRetailer.set(retailer, offer);
-    }
+    });
   }
 
-  return [...cheapestByRetailer.values()];
+  return offers;
 }
 
 function isAvailable(availability) {

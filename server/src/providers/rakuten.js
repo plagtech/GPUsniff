@@ -103,12 +103,9 @@ export async function fetchRakutenOffers(gpu) {
     });
   }
 
-  if (!offers.length) return [];
-
-  // Return the single cheapest Newegg offer (the aggregator keeps the
-  // cheapest per retailer anyway, but this keeps the payload tight).
-  offers.sort((a, b) => a.price - b.price);
-  return [offers[0]];
+  // Return all Newegg candidates; the aggregator sanity-filters out feed
+  // junk and keeps the cheapest plausible card per retailer.
+  return offers;
 }
 
 // ── OAuth2 token exchange ───────────────────────────────────────────────

@@ -18,6 +18,7 @@ import { cache } from './cache.js';
 import { getGpuById, retailerMeta } from './gpuDatabase.js';
 import { fetchAllRealOffers } from './providers/index.js';
 import { mockOffers } from './providers/mock.js';
+import { isPlausibleOffer } from './sanity.js';
 import { recordSnapshots } from './supabase.js';
 
 function decorate(offer, nowIso) {
@@ -88,7 +89,11 @@ export async function getPrices(gpuId) {
     offers = mockOffers(gpu);
   }
 
-  const prices = cheapestPerRetailer(offers)
+  // Drop feed junk (accessories, laptops, implausibly cheap matches) so
+  // only actual graphics cards reach the response.
+  const realCards = offers.filter((o) => isPlausibleOffer(gpu, o));
+
+  const prices = cheapestPerRetailer(realCards)
     .map((o) => decorate(o, nowIso))
     .sort((a, b) => a.price - b.price);
 

@@ -45,24 +45,23 @@ export async function fetchWalmartOffers(gpu) {
       inStock: isAvailable(it.StockAvailability),
       url: it.TrackingUrl || it.Url,
       shipping: null,
+      title: it.Name || null,
     }))
     .filter((o) => o.price != null)
     .sort((a, b) => a.price - b.price);
 
-  const chosen = priced.find((o) => o.inStock) || priced[0];
-  if (!chosen) return [];
-
-  return [
-    {
-      retailer: 'walmart',
-      price: chosen.price,
-      originalPrice: chosen.original && chosen.original > chosen.price ? chosen.original : null,
-      inStock: chosen.inStock,
-      url: chosen.url,
-      shipping: chosen.shipping,
-      source: 'impact-walmart',
-    },
-  ];
+  // Return all candidates; the aggregator sanity-filters and keeps the
+  // cheapest plausible card per retailer.
+  return priced.map((o) => ({
+    retailer: 'walmart',
+    price: o.price,
+    title: o.title,
+    originalPrice: o.original && o.original > o.price ? o.original : null,
+    inStock: o.inStock,
+    url: o.url,
+    shipping: o.shipping,
+    source: 'impact-walmart',
+  }));
 }
 
 function isAvailable(stock) {
